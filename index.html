@@ -410,6 +410,7 @@
             position: absolute;
             cursor: move;
             user-select: none;
+            -webkit-user-select: none;
             z-index: 10;
             transform-origin: top left;
             padding: 4px;
@@ -785,14 +786,18 @@
             <button id="deleteBtn">削除</button>
         </div>
 
-        <div class="separator"></div>
-
         <div class="toolbar-group">
             <span class="toolbar-group-label">表示設定</span>
             <button id="toggleGridBtn">グリッド</button>
             <button id="toggleEndpointsBtn">端点</button>
             <button id="toggleConnectionsBtn">接続線</button>
             <button id="toggleLabelsBtn">接続情報</button>
+        </div>
+
+        <div class="toolbar-group" id="selection-target-group">
+            <span class="toolbar-group-label">選択対象</span>
+            <label style="margin-right:8px;"><input type="radio" name="selectionTarget" id="selectTrackRadio" value="track" checked> 線路</label>
+            <label><input type="radio" name="selectionTarget" id="selectElementRadio" value="element"> 連動要素</label>
         </div>
 
         <div class="separator"></div>
@@ -845,15 +850,6 @@
             <span class="toolbar-group-label">進路設定</span>
             <button id="autoRouteBtn" title="進路自動生成">自動生成</button>
             <button id="manualRouteBtn" title="進路手動生成">手動生成</button>
-            <button id="clearRoutesBtn" title="進路クリア">進路クリア</button>
-        </div>
-
-        <div class="separator"></div>
-
-        <div class="toolbar-group" id="selection-target-group" style="margin-left:auto;">
-            <span class="toolbar-group-label">選択対象</span>
-            <label style="margin-right:8px;"><input type="radio" name="selectionTarget" id="selectTrackRadio" value="track" checked> 線路</label>
-            <label><input type="radio" name="selectionTarget" id="selectElementRadio" value="element"> 連動要素</label>
         </div>
     </div>
 
@@ -866,18 +862,6 @@
             <!-- 進路生成モードインジケーター -->
             <div id="modeIndicator" class="mode-indicator">
                 <span id="modeText">自動生成モード</span>
-            </div>
-
-            <!-- 進路生成ガイダンス -->
-            <div id="routeGuidance" class="guidance-overlay">
-                <button class="guidance-close" onclick="document.getElementById('routeGuidance').classList.remove('active')">×</button>
-                <div class="guidance-title">進路生成ガイド</div>
-                <ul class="guidance-steps" id="guidanceSteps">
-                    <!-- 動的に追加されます -->
-                </ul>
-                <div class="guidance-controls">
-                    <button onclick="routeManager.cancelRouteGeneration()" class="control-btn">キャンセル</button>
-                </div>
             </div>
         </div>
         
@@ -896,7 +880,8 @@
                             <span>直進</span>
                         </div>
                         <div class="point-controls">
-                            <input type="number" class="address-input" value="1" min="0" max="2044">
+                            <label for="address-input-1" style="display:none;">アドレス</label>
+                            <input type="number" id="address-input-1" class="address-input" value="1" min="0" max="2044" title="アドレス" placeholder="アドレス">
                             <button class="switch-button">ポイント切替</button>
                         </div>
                     </div>
@@ -932,6 +917,16 @@
             <span id="connection-status-text">DSAir: 未接続</span>
         </div>
         <div id="status-info">準備完了</div>
+    </div>
+
+    <!-- 進路候補・登録済み進路モーダル -->
+    <div id="routeModal" class="modal" style="display:none;">
+        <div class="modal-content" style="max-width:600px;">
+            <button id="closeRouteModalBtn" class="modal-buttons" style="position:absolute;top:8px;right:8px;">×</button>
+            <div id="routeModalBody">
+                <!-- ここに進路候補・登録済み進路リストが動的に描画されます -->
+            </div>
+        </div>
     </div>
 
     <!-- JavaScriptファイル -->

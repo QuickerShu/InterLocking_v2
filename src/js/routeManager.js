@@ -116,7 +116,6 @@ class RouteManager {
         // ツールバーボタンの参照を取得
         this.autoRouteBtn = document.getElementById('autoRouteBtn');
         this.manualRouteBtn = document.getElementById('manualRouteBtn');
-        this.clearRoutesBtn = document.getElementById('clearRoutesBtn');
         this.saveRouteBtn = document.getElementById('saveRouteBtn');
         this.loadRouteBtn = document.getElementById('loadRouteBtn');
         this.routeList = document.getElementById('route-list');
@@ -125,7 +124,6 @@ class RouteManager {
     bindEvents() {
         this.autoRouteBtn.addEventListener('click', () => this.toggleAutoMode());
         this.manualRouteBtn.addEventListener('click', () => this.toggleManualMode());
-        this.clearRoutesBtn.addEventListener('click', () => this.clearRoutes());
         this.saveRouteBtn.addEventListener('click', () => this.saveRoutes());
         this.loadRouteBtn.addEventListener('click', () => this.loadRoutes());
     }
@@ -153,6 +151,48 @@ class RouteManager {
         document.body.style.cursor = 'crosshair';
         this.showGuidance('auto');
         this.updateModeIndicator('auto');
+
+        // ここで全てのてこ×着点ボタンの組み合わせで進路候補を生成し、モーダル表示
+        const trackElements = Array.from(document.querySelectorAll('[data-track-element]'))
+            .map(el => ({
+                id: el.dataset.trackId,
+                type: el.dataset.trackType,
+                normalConnection: el.dataset.normalConnection ? { id: el.dataset.normalConnection } : null,
+                reverseConnection: el.dataset.reverseConnection ? { id: el.dataset.reverseConnection } : null
+            }));
+        this.buildTrackGraph(trackElements);
+        // てこ・着点ボタンの全組み合わせで候補生成
+        const levers = Array.from(document.querySelectorAll('[data-element-type$="Lever"]')).map(el => ({
+            id: el.dataset.elementId,
+            type: el.dataset.elementType
+        }));
+        const destButtons = Array.from(document.querySelectorAll('[data-element-type="destButton"]')).map(el => ({
+            id: el.dataset.elementId
+        }));
+        let allCandidates = [];
+        levers.forEach(lever => {
+            destButtons.forEach(dest => {
+                const candidates = this.generateRouteCandidates(lever.id, dest.id);
+                if (candidates.length > 0) {
+                    const validCandidates = candidates
+                        .map(points => {
+                            const route = new Route(
+                                `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
+                                lever,
+                                dest,
+                                points,
+                                true
+                            );
+                            route.calculateCost();
+                            return route;
+                        })
+                        .filter(route => this.validateRoute(route))
+                        .sort((a, b) => a.cost - b.cost);
+                    allCandidates.push(...validCandidates);
+                }
+            });
+        });
+        this.showRouteCandidates(allCandidates);
     }
 
     exitAutoMode() {
@@ -500,11 +540,12 @@ class RouteManager {
                 this.selectedDestination.id
             );
 
+            // 進路候補リストを生成
             if (candidates.length > 0) {
                 const validCandidates = candidates
                     .map(points => {
                         const route = new Route(
-                            `${this.getLeverTypeName(this.selectedLever.type)} ${this.routes.size + 1}`,
+                            `${this.getLeverTypeName(this.selectedLever.type)} 候補${this.routes.size + 1}`,
                             this.selectedLever,
                             this.selectedDestination,
                             points,
@@ -516,14 +557,10 @@ class RouteManager {
                     .filter(route => this.validateRoute(route))
                     .sort((a, b) => a.cost - b.cost);
 
-                if (validCandidates.length > 0) {
-                    const bestRoute = validCandidates[0];
-                    this.addRoute(bestRoute);
-                    this.updateRouteList();
-                    this.highlightRoute(bestRoute.points);
-                } else {
-                    throw new Error('有効な進路が見つかりません');
-                }
+                // 進路候補リストを画面に表示
+                this.showRouteCandidates(validCandidates);
+            } else {
+                throw new Error('有効な進路が見つかりません');
             }
         } catch (error) {
             console.error('進路生成エラー:', error);
@@ -533,20 +570,109 @@ class RouteManager {
         }
     }
 
-    // 経路の視覚的表示
-    highlightRoute(points) {
-        // 既存のハイライトをクリア
-        document.querySelectorAll('.route-highlight').forEach(el => {
-            el.classList.remove('route-highlight');
+    // 進路候補リストを画面に表示するメソッドを追加
+    showRouteCandidates(candidates) {
+        // モーダル要素取得
+        const modal = document.getElementById('routeModal');
+        const modalBody = document.getElementById('routeModalBody');
+        // モーダル内容クリア
+        modalBody.innerHTML = '';
+        // 候補リスト
+        const candidateHeader = document.createElement('div');
+        candidateHeader.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">進路自動生成候補</h3>';
+        modalBody.appendChild(candidateHeader);
+        candidates.forEach((route, idx) => {
+            const routeElement = document.createElement('div');
+            routeElement.className = 'route-item candidate';
+            routeElement.innerHTML = `
+                <div class=\"route-header\">
+                    <span class=\"route-name\">${route.name}</span>
+                    <span class=\"route-generation-mode auto\">自動生成候補</span>
+                    <div class=\"route-actions\">
+                        <button class=\"route-action-btn\" onclick=\"routeManager.addRouteFromCandidate(${idx})\">追加</button>
+                    </div>
+                </div>
+                <div class=\"route-details\">
+                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
+                    <div>着点: 着点ボタン ${route.destination.id}</div>
+                    <div class=\"route-points\">
+                        ${route.points.map(p => `
+                            <div class=\"route-point\">
+                                <span>ポイント: ${p.id}</span>
+                                <span>位置: ${p.position === 'normal' ? '直進' : '分岐'}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div>コスト: ${route.cost}</div>
+                </div>
+            `;
+            modalBody.appendChild(routeElement);
         });
+        // 区切り線
+        const hr = document.createElement('hr');
+        hr.style.margin = '16px 0 8px 0';
+        modalBody.appendChild(hr);
+        // 登録済み進路リスト
+        const registeredHeader = document.createElement('div');
+        registeredHeader.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">登録済み進路一覧</h3>';
+        modalBody.appendChild(registeredHeader);
+        if (this.routes.size === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.textContent = '登録済み進路はありません';
+            emptyMsg.style.color = '#888';
+            modalBody.appendChild(emptyMsg);
+        } else {
+            this.routes.forEach(route => {
+                const routeElement = document.createElement('div');
+                routeElement.className = 'route-item';
+                routeElement.innerHTML = `
+                    <div class=\"route-header\">
+                        <span class=\"route-name\">${route.name}</span>
+                        <span class=\"route-generation-mode ${route.isAuto ? 'auto' : 'manual'}\">
+                            ${route.isAuto ? '自動生成' : '手動生成'}
+                        </span>
+                        <div class=\"route-actions\">
+                            <button class=\"route-action-btn\" onclick=\"routeManager.activateRoute('${route.id}')\">
+                                ${route.isActive ? '解除' : '設定'}
+                            </button>
+                            <button class=\"route-action-btn delete\" onclick=\"routeManager.removeRoute('${route.id}')\">
+                                削除
+                            </button>
+                        </div>
+                    </div>
+                    <div class=\"route-details\">
+                        <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
+                        <div>着点: 着点ボタン ${route.destination.id}</div>
+                        <div class=\"route-points\">
+                            ${route.points.map(p => `
+                                <div class=\"route-point\">
+                                    <span>ポイント: ${p.id}</span>
+                                    <span>位置: ${p.position === 'normal' ? '直進' : '分岐'}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                modalBody.appendChild(routeElement);
+            });
+        }
+        // モーダル表示
+        modal.style.display = 'flex';
+        // 閉じるボタンイベント
+        const closeBtn = document.getElementById('closeRouteModalBtn');
+        closeBtn.onclick = () => { modal.style.display = 'none'; };
+        // 候補を一時保存
+        this.candidateRoutes = candidates;
+    }
 
-        // 新しい経路をハイライト
-        points.forEach(point => {
-            const element = document.querySelector(`[data-track-id="${point.id}"]`);
-            if (element) {
-                element.classList.add('route-highlight');
-            }
-        });
+    // 進路候補から追加するメソッドを追加
+    addRouteFromCandidate(idx) {
+        if (this.candidateRoutes && this.candidateRoutes[idx]) {
+            const route = this.candidateRoutes[idx];
+            this.addRoute(route);
+            this.updateRouteList();
+            delete this.candidateRoutes; // 候補リストを消す
+        }
     }
 
     finalizeManualRoute() {
@@ -693,30 +819,11 @@ class RouteManager {
     }
 
     showGuidance(mode) {
-        const steps = mode === 'auto' ? [
-            '「自動生成」ボタンをクリックして自動生成モードを開始',
-            'テコ（信号/入換/標識/開通）を選択',
-            '着点ボタンを選択',
-            '自動的に最適な進路が生成されます'
-        ] : [
-            '「手動生成」ボタンをクリックして手動生成モードを開始',
-            'テコ（信号/入換/標識/開通）を選択',
-            '進路に含めるポイントを順番にクリック（右クリックで位置切替）',
-            '着点ボタンをクリックして確定'
-        ];
-
-        this.guidanceSteps.innerHTML = steps.map((step, index) => `
-            <li class="guidance-step">
-                <div class="step-number">${index + 1}</div>
-                <div class="step-content">${step}</div>
-            </li>
-        `).join('');
-
-        this.guidance.classList.add('active');
+        // ガイドUIは削除されたため何もしない
     }
 
     hideGuidance() {
-        this.guidance.classList.remove('active');
+        // ガイドUIは削除されたため何もしない
     }
 
     updateModeIndicator(mode) {
