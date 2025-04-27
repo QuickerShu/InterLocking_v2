@@ -1207,9 +1207,8 @@ class App {
                 ctx.save();
                 ctx.globalAlpha = 0.5;
                 ctx.strokeStyle = '#FF9800';
-                ctx.lineWidth = 4;
                 ctx.setLineDash([6, 6]);
-                this.canvas.drawTrack(this._previewPlacingTrack);
+                this.canvas.drawTrack(this._previewPlacingTrack, this.canvas.scale, true);
                 ctx.setLineDash([]);
                 ctx.restore();
             }
@@ -1798,6 +1797,15 @@ class App {
             });
             
             this.canvas.draw();
+            // プレビュー描画（スケール・プレビュー用スタイルで）
+            const ctx = this.canvas.trackCanvas.getContext('2d');
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#FF9800';
+            ctx.setLineDash([6, 6]);
+            this.canvas.drawTrack(track, this.canvas.scale, true);
+            ctx.setLineDash([]);
+            ctx.restore();
         };
         
         const upHandler = () => {
@@ -1873,6 +1881,15 @@ class App {
             });
             
             this.canvas.draw();
+            // プレビュー描画（スケール・プレビュー用スタイルで）
+            const ctx = this.canvas.trackCanvas.getContext('2d');
+            ctx.save();
+            ctx.globalAlpha = 0.5;
+            ctx.strokeStyle = '#FF9800';
+            ctx.setLineDash([6, 6]);
+            this.canvas.drawTrack(track, this.canvas.scale, true);
+            ctx.setLineDash([]);
+            ctx.restore();
         };
         
         const upHandler = () => {

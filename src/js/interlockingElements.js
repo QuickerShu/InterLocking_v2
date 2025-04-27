@@ -102,21 +102,19 @@ class DestinationButton extends InterlockingElement {
     /**
      * 着点ボタンの描画処理
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
+     * @param {number} scale - キャンバスの拡大縮小倍率
      */
-    draw(ctx) {
+    draw(ctx, scale = 1) {
         ctx.save();  // 現在の描画状態を保存
-        
         // 状態に応じた色
         ctx.fillStyle = BUTTON_COLORS[this.state];
         ctx.strokeStyle = '#999999';  // 境界線は暗めのグレー
-        ctx.lineWidth = 1;
-        
+        ctx.lineWidth = 1 / scale;
         // 円形ボタンの描画
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, 10 / scale, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-        
         ctx.restore();  // 保存した描画状態に戻す
     }
 
@@ -163,8 +161,9 @@ class StartLever {
     /**
      * 発点てこの描画処理
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
+     * @param {number} scale - キャンバスの拡大縮小倍率
      */
-    draw(ctx) {
+    draw(ctx, scale = 1) {
         ctx.save();  // 現在の描画状態を保存
         
         // てこの位置に移動して回転
@@ -183,7 +182,7 @@ class StartLever {
         // てこの描画 (基本的な長方形と丸い取っ手)
         // ベース部分 (長方形)
         ctx.fillStyle = '#333333';  // 暗めのグレー
-        ctx.fillRect(-5, 0, 10, 25);
+        ctx.fillRect(-5 / scale, 0, 10 / scale, 25 / scale);
         
         // 取っ手部分 (丸)
         ctx.fillStyle = baseColor;
@@ -202,19 +201,19 @@ class StartLever {
         }
         
         ctx.beginPath();
-        ctx.arc(0, -5, 8, 0, Math.PI * 2);
+        ctx.arc(0, -5 / scale, 8 / scale, 0, Math.PI * 2);
         ctx.fill();
         
         // 選択状態の表示
         if (this.selected) {
             ctx.strokeStyle = '#00FFFF';  // 水色
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 / scale;
             ctx.beginPath();
-            ctx.arc(0, -5, 10, 0, Math.PI * 2);
+            ctx.arc(0, -5 / scale, 10 / scale, 0, Math.PI * 2);
             ctx.stroke();
             
             // ベース部分も強調
-            ctx.strokeRect(-6, -1, 12, 27);
+            ctx.strokeRect(-6 / scale, -1 / scale, 12 / scale, 27 / scale);
         }
         
         ctx.restore();  // 保存した描画状態に戻す
@@ -371,54 +370,55 @@ class TrackInsulation {
     /**
      * 線路絶縁の描画処理
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
+     * @param {number} scale - キャンバスの拡大縮小倍率
      */
-    draw(ctx) {
+    draw(ctx, scale = 1) {
         if (this.selected) {
             ctx.strokeStyle = '#FF0000';
         } else {
             ctx.strokeStyle = '#000000';
         }
         
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / scale;
         
         // 絶縁のタイプに基づいて描画
         if (this.type === INSULATION_TYPES.STRAIGHT) {
             // 直線絶縁
             ctx.beginPath();
-            ctx.moveTo(-15, 0);
-            ctx.lineTo(-5, 0);
+            ctx.moveTo(-15 / scale, 0);
+            ctx.lineTo(-5 / scale, 0);
             ctx.stroke();
             
             ctx.beginPath();
-            ctx.moveTo(5, 0);
-            ctx.lineTo(15, 0);
+            ctx.moveTo(5 / scale, 0);
+            ctx.lineTo(15 / scale, 0);
             ctx.stroke();
             
             // 絶縁部分（空白）を白い短い線で表現
             ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2 / scale;
             ctx.beginPath();
-            ctx.moveTo(-5, 0);
-            ctx.lineTo(5, 0);
+            ctx.moveTo(-5 / scale, 0);
+            ctx.lineTo(5 / scale, 0);
             ctx.stroke();
             
             ctx.beginPath();
-            ctx.moveTo(-5, -5);
-            ctx.lineTo(5, -5);
+            ctx.moveTo(-5 / scale, -5 / scale);
+            ctx.lineTo(5 / scale, -5 / scale);
             ctx.stroke();
             
             ctx.beginPath();
-            ctx.moveTo(-5, 5);
-            ctx.lineTo(5, 5);
+            ctx.moveTo(-5 / scale, 5 / scale);
+            ctx.lineTo(5 / scale, 5 / scale);
             ctx.stroke();
         }
         
         // 選択された場合の表示を追加
         if (this.selected) {
             ctx.strokeStyle = '#FF0000';
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1 / scale;
             ctx.beginPath();
-            ctx.arc(0, 0, 20, 0, Math.PI * 2);
+            ctx.arc(0, 0, 20 / scale, 0, Math.PI * 2);
             ctx.stroke();
         }
     }
