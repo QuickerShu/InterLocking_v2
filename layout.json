@@ -6,11 +6,11 @@
       "endpoints": [
         {
           "x": 100,
-          "y": 200
+          "y": 220
         },
         {
-          "x": 240,
-          "y": 200
+          "x": 280,
+          "y": 220
         }
       ],
       "connections": [
@@ -34,16 +34,16 @@
       "type": "point_left",
       "endpoints": [
         {
-          "x": 240,
-          "y": 200
+          "x": 280,
+          "y": 220
+        },
+        {
+          "x": 360,
+          "y": 220
         },
         {
           "x": 320,
           "y": 200
-        },
-        {
-          "x": 280,
-          "y": 180
         }
       ],
       "connections": [
@@ -81,12 +81,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 280,
-          "y": 180
+          "x": 320,
+          "y": 200
         },
         {
-          "x": 360,
-          "y": 120
+          "x": 400,
+          "y": 160
         }
       ],
       "connections": [
@@ -117,12 +117,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 360,
-          "y": 120
+          "x": 400,
+          "y": 160
         },
         {
-          "x": 440,
-          "y": 120
+          "x": 700,
+          "y": 160
         }
       ],
       "connections": [
@@ -131,13 +131,6 @@
           {
             "trackId": 3,
             "endpointIndex": 1
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 7,
-            "endpointIndex": 0
           }
         ]
       ],
@@ -150,18 +143,14 @@
     },
     {
       "id": 5,
-      "type": "point_right",
+      "type": "straight",
       "endpoints": [
         {
-          "x": 320,
-          "y": 200
-        },
-        {
-          "x": 400,
-          "y": 200
-        },
-        {
           "x": 360,
+          "y": 220
+        },
+        {
+          "x": 700,
           "y": 220
         }
       ],
@@ -170,143 +159,6 @@
           0,
           {
             "trackId": 2,
-            "endpointIndex": 1
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 6,
-            "endpointIndex": 0
-          }
-        ],
-        [
-          2,
-          {
-            "trackId": 8,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "normal",
-      "isPoint": true,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 6,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 400,
-          "y": 200
-        },
-        {
-          "x": 540,
-          "y": 200
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 5,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "normal",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 7,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 440,
-          "y": 120
-        },
-        {
-          "x": 540,
-          "y": 120
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 4,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "normal",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 8,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 360,
-          "y": 220
-        },
-        {
-          "x": 420,
-          "y": 260
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 5,
-            "endpointIndex": 2
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 9,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "normal",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 9,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 420,
-          "y": 260
-        },
-        {
-          "x": 540,
-          "y": 260
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 8,
             "endpointIndex": 1
           }
         ]
@@ -321,10 +173,10 @@
   ],
   "startLevers": [
     {
-      "id": "signalLever_1745764793519_877",
+      "id": "signalLever_1745766198165_661",
       "type": "signal",
-      "x": 120,
-      "y": 200,
+      "x": 140,
+      "y": 220,
       "trackId": 1,
       "state": "neutral",
       "selected": false,
@@ -338,31 +190,22 @@
   ],
   "destinationButtons": [
     {
-      "id": "b0d6915b-8c33-416d-9e0b-3c9e3b10af2a",
+      "id": "87903299-b3fb-4d10-864b-c9a5238383ee",
       "type": "destButton",
-      "x": 520,
-      "y": 120,
+      "x": 660,
+      "y": 160,
       "state": "normal",
       "routes": [],
-      "trackId": 7
+      "trackId": 4
     },
     {
-      "id": "a34e8524-8d6d-462b-b00e-861a0fb7f4a0",
+      "id": "c277ec28-b0a5-4467-adf0-563747a6aba0",
       "type": "destButton",
-      "x": 520,
-      "y": 200,
+      "x": 660,
+      "y": 220,
       "state": "normal",
       "routes": [],
-      "trackId": 6
-    },
-    {
-      "id": "d6b48495-e185-44fd-9f6e-41b4c57b4fc5",
-      "type": "destButton",
-      "x": 520,
-      "y": 260,
-      "state": "normal",
-      "routes": [],
-      "trackId": 9
+      "trackId": 5
     }
   ],
   "trackInsulations": []

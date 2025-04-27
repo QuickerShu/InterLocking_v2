@@ -451,14 +451,61 @@ class RouteManager {
             }
         });
 
-        // 3. 各track内の両端点もエッジで結ぶ（線路上の移動）
+        // 3. 各track内の全端点ペアをエッジで結ぶ（線路上の移動）
         trackElements.forEach(track => {
-            if (Array.isArray(track.endpoints) && track.endpoints.length === 2) {
-                const nodeA = this.trackGraph.get(`${track.id}:0`);
-                const nodeB = this.trackGraph.get(`${track.id}:1`);
-                if (nodeA && nodeB) {
-                    nodeA.addConnection(nodeB, 1, 'track');
-                    nodeB.addConnection(nodeA, 1, 'track');
+            if (Array.isArray(track.endpoints) && track.endpoints.length >= 2) {
+                for (let i = 0; i < track.endpoints.length; i++) {
+                    for (let j = i + 1; j < track.endpoints.length; j++) {
+                        const nodeA = this.trackGraph.get(`${track.id}:${i}`);
+                        const nodeB = this.trackGraph.get(`${track.id}:${j}`);
+                        if (nodeA && nodeB) {
+                            let posA = 'track', posB = 'track';
+                            if (track.isPoint) {
+                                // point_left型: 0-1=normal, 0-2=reverse
+                                if (track.type === 'point_left') {
+                                    if ((i === 0 && j === 1) || (i === 1 && j === 0)) {
+                                        posA = posB = 'normal';
+                                    } else if ((i === 0 && j === 2) || (i === 2 && j === 0)) {
+                                        posA = posB = 'reverse';
+                                    } else {
+                                        posA = posB = 'track';
+                                    }
+                                }
+                                // point_right型: 0-1=normal, 0-2=reverse
+                                else if (track.type === 'point_right') {
+                                    if ((i === 0 && j === 1) || (i === 1 && j === 0)) {
+                                        posA = posB = 'normal';
+                                    } else if ((i === 0 && j === 2) || (i === 2 && j === 0)) {
+                                        posA = posB = 'reverse';
+                                    } else {
+                                        posA = posB = 'track';
+                                    }
+                                }
+                                // double_cross: 0-1,2-3=normal, 0-2,1-3=reverse
+                                else if (track.type === 'double_cross') {
+                                    if (((i === 0 && j === 1) || (i === 1 && j === 0)) || ((i === 2 && j === 3) || (i === 3 && j === 2))) {
+                                        posA = posB = 'normal';
+                                    } else if (((i === 0 && j === 2) || (i === 2 && j === 0)) || ((i === 1 && j === 3) || (i === 3 && j === 1))) {
+                                        posA = posB = 'reverse';
+                                    } else {
+                                        posA = posB = 'track';
+                                    }
+                                }
+                                // double_slip_x: 0-1,2-3=normal, 0-3,1-2=reverse
+                                else if (track.type === 'double_slip_x') {
+                                    if (((i === 0 && j === 1) || (i === 1 && j === 0)) || ((i === 2 && j === 3) || (i === 3 && j === 2))) {
+                                        posA = posB = 'normal';
+                                    } else if (((i === 0 && j === 3) || (i === 3 && j === 0)) || ((i === 1 && j === 2) || (i === 2 && j === 1))) {
+                                        posA = posB = 'reverse';
+                                    } else {
+                                        posA = posB = 'track';
+                                    }
+                                }
+                            }
+                            nodeA.addConnection(nodeB, 1, posA);
+                            nodeB.addConnection(nodeA, 1, posB);
+                        }
+                    }
                 }
             }
         });
@@ -627,23 +674,29 @@ class RouteManager {
         // 経路の再構築
         const path = [];
         let current = endId;
-        while (current !== null) {
-            const prev = previous.get(current);
-            if (!prev) {
-                if (current !== startId) {
-                    return [];
-                }
-                break;
+        let prev = previous.get(current);
+        while (prev) {
+            // prev.id から current へのエッジのpositionを取得
+            let position = 'track';
+            const prevNode = this.trackGraph.get(prev.id);
+            if (prevNode && prevNode.connections.has(current)) {
+                position = prevNode.connections.get(current).position;
             }
             path.unshift({
                 id: prev.id,
-                position: prev.position
+                nextId: current,
+                position: position
             });
             current = prev.id;
+            prev = previous.get(current);
         }
-        if (path.length > 0) {
-            path.push({ id: endId, position: 'track' });
+        // 最後のノード（始点）
+        if (path.length > 0 && path[0].id !== startId) {
+            // 始点が含まれていない場合は無効
+            return [];
         }
+        // 終点を追加
+        path.push({ id: endId, nextId: null, position: 'track' });
         return path;
     }
 
@@ -711,28 +764,75 @@ class RouteManager {
         candidates.forEach((route, idx) => {
             const routeElement = document.createElement('div');
             routeElement.className = 'route-item candidate';
+            // 経路情報を整形
+            let routeInfo = '';
+            for (let i = 0; i < route.points.length - 1; i++) {
+                const curr = route.points[i];
+                const next = route.points[i + 1];
+                const currTrackId = curr.id.split(':')[0];
+                const currEpIdx = curr.id.split(':')[1];
+                const nextEpIdx = next.id.split(':')[1];
+                // track情報取得
+                let track = null;
+                if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
+                    const tracks = window.app.trackManager.tracks;
+                    if (Array.isArray(tracks)) {
+                        track = tracks.find(t => String(t.id) === currTrackId);
+                    } else if (typeof tracks.get === 'function') {
+                        track = tracks.get(currTrackId) || tracks.get(Number(currTrackId));
+                    } else if (typeof tracks === 'object') {
+                        track = tracks[currTrackId] || tracks[Number(currTrackId)];
+                    }
+                }
+                // 分岐器のいずれの端点から出入りする場合も方向を明示
+                let stepStr = `線路${currTrackId} 端点${currEpIdx}→${nextEpIdx}`;
+                if (track && track.isPoint) {
+                    // point_left, point_right, double_cross, double_slip_x で方向判定
+                    let showDirection = false;
+                    if (track.type === 'point_left' || track.type === 'point_right') {
+                        // 0-1, 1-0: normal, 0-2, 2-0: reverse
+                        if ((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) {
+                            showDirection = true;
+                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                        } else if ((currEpIdx === '0' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '0')) {
+                            showDirection = true;
+                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                        }
+                    } else if (track.type === 'double_cross') {
+                        // 0-1,1-0,2-3,3-2: normal, 0-2,2-0,1-3,3-1: reverse
+                        if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
+                            showDirection = true;
+                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                        } else if (((currEpIdx === '0' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '0')) || ((currEpIdx === '1' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '1'))) {
+                            showDirection = true;
+                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                        }
+                    } else if (track.type === 'double_slip_x') {
+                        // 0-1,1-0,2-3,3-2: normal, 0-3,3-0,1-2,2-1: reverse
+                        if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
+                            showDirection = true;
+                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                        } else if (((currEpIdx === '0' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '0')) || ((currEpIdx === '1' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '1'))) {
+                            showDirection = true;
+                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
+                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                        }
+                    }
+                }
+                routeInfo += stepStr + ' → ';
+            }
+            // 最後の端点
+            const last = route.points[route.points.length - 1];
+            const lastTrackId = last.id.split(':')[0];
+            const lastEpIdx = last.id.split(':')[1];
+            routeInfo += `線路${lastTrackId} 端点${lastEpIdx}`;
             routeElement.innerHTML = `
-                <div class=\"route-header\">
-                    <span class=\"route-name\">${route.name}</span>
-                    <span class=\"route-generation-mode auto\">自動生成候補</span>
-                    <div class=\"route-actions\">
-                        <button class=\"route-action-btn\" onclick=\"routeManager.addRouteFromCandidate(${idx})\">追加</button>
-                    </div>
-                </div>
-                <div class=\"route-details\">
-                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
-                    <div>着点: 着点ボタン ${route.destination.id}</div>
-                    <div class=\"route-points\">
-                        ${route.points.map(p => `
-                            <div class=\"route-point\">
-                                <span>ポイント: ${p.id}</span>
-                                <span>位置: ${p.position === 'normal' ? '直進' : '分岐'}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div>コスト: ${route.cost}</div>
-                </div>
-            `;
+                <div class=\"route-header\">\n                    <span class=\"route-name\">${route.name}</span>\n                    <span class=\"route-generation-mode auto\">自動生成候補</span>\n                    <div class=\"route-actions\">\n                        <button class=\"route-action-btn\" onclick=\"routeManager.addRouteFromCandidate(${idx})\">追加</button>\n                    </div>\n                </div>\n                <div class=\"route-details\">\n                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>\n                    <div>着点: 着点ボタン ${route.destination.id}</div>\n                    <div class=\"route-points\">${routeInfo}</div>\n                    <div>コスト: ${route.cost}</div>\n                </div>\n            `;
             modalBody.appendChild(routeElement);
         });
         // 区切り線
