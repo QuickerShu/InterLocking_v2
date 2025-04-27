@@ -2017,21 +2017,21 @@ class App {
         previewLabel.style.pointerEvents = 'none';
         previewLabel.style.position = 'absolute';
         previewLabel.style.zIndex = '1000';
-        
-        // 初期表示は非表示
         previewLabel.style.display = 'none';
         canvasContainer.appendChild(previewLabel);
         
         // マウス移動時のハンドラ
         const moveHandler = (e) => {
             const mousePos = this.canvas.getMousePosition(e);
-            
-            // グリッドに吸着
             const gridPos = this.snapToGrid(mousePos);
-            
-            // プレビュー位置を更新
-            previewLabel.style.left = `${gridPos.x}px`;
-            previewLabel.style.top = `${gridPos.y}px`;
+            // 論理座標→画面座標変換
+            const { left, top } = logicalToScreen(
+                gridPos.x, gridPos.y,
+                this.canvas.scale,
+                this.canvas.scrollX || 0, this.canvas.scrollY || 0
+            );
+            previewLabel.style.left = `${left}px`;
+            previewLabel.style.top = `${top}px`;
             previewLabel.style.display = 'flex';
         };
         
@@ -2588,20 +2588,19 @@ class App {
     
     // テキストラベルのスケールを更新
     updateTextLabelScale(label, scale) {
-        // 現在のスケールを保存
         label.dataset.scale = scale;
-        
         // 変換行列を使って拡大縮小
         label.style.transform = `scale(${scale})`;
-        
-        // 位置の調整（スケールの原点が左上なのでそのまま）
-        // データ属性に保存されている元の位置を使用
+        // データ属性に保存されている論理座標を画面座標に変換
         const x = parseInt(label.dataset.x);
         const y = parseInt(label.dataset.y);
-        
-        // 位置更新
-        label.style.left = `${x}px`;
-        label.style.top = `${y}px`;
+        const { left, top } = logicalToScreen(
+            x, y,
+            scale,
+            this.canvas.scrollX || 0, this.canvas.scrollY || 0
+        );
+        label.style.left = `${left}px`;
+        label.style.top = `${top}px`;
     }
     
     // テキストラベルの位置を更新（すべてのラベルに適用）
@@ -2662,40 +2661,30 @@ class App {
         // ドラッグ中
         document.addEventListener('mousemove', (e) => {
             if (!isDragging) return;
-            
             const canvasContainer = document.getElementById('canvas-container');
             const containerRect = canvasContainer.getBoundingClientRect();
-            
-            // 現在のスケールを考慮
             const scale = parseFloat(element.dataset.scale) || 1;
-            
-            // スクロール位置を考慮した配置
             let left = (e.clientX - containerRect.left - offsetX * scale + canvasContainer.scrollLeft) / scale * scale;
             let top = (e.clientY - containerRect.top - offsetY * scale + canvasContainer.scrollTop) / scale * scale;
-            
-            // NaNチェック
             if (isNaN(left) || isNaN(top)) {
-                console.warn('位置計算でNaNが発生しました。デフォルト値を使用します。');
                 left = e.clientX - containerRect.left + canvasContainer.scrollLeft;
                 top = e.clientY - containerRect.top + canvasContainer.scrollTop;
             }
-            
-            // グリッドに吸着する場合
             if (snapToGrid) {
-                const gridSize = this.canvas.gridSize || 20; // デフォルト値を設定
+                const gridSize = this.canvas.gridSize || 20;
                 left = Math.round(left / gridSize) * gridSize;
                 top = Math.round(top / gridSize) * gridSize;
             }
-            
-            // 位置を更新
-            element.style.left = `${left}px`;
-            element.style.top = `${top}px`;
-            
-            // データ属性に実際の位置を保存
+            // 論理座標→画面座標変換
+            const { left: screenLeft, top: screenTop } = logicalToScreen(
+                left, top,
+                scale,
+                this.canvas.scrollX || 0, this.canvas.scrollY || 0
+            );
+            element.style.left = `${screenLeft}px`;
+            element.style.top = `${screenTop}px`;
             element.dataset.x = left;
             element.dataset.y = top;
-            
-            e.preventDefault();
         });
         
         // ドラッグ終了時
@@ -3185,3 +3174,11 @@ document.addEventListener('keydown', (e) => {
         }
     }
 });
+
+// 論理座標→画面座標変換関数
+function logicalToScreen(x, y, scale, scrollX, scrollY) {
+    return {
+        left: x * scale - scrollX,
+        top:  y * scale - scrollY
+    };
+}
