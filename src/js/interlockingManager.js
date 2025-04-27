@@ -33,6 +33,10 @@ class InterlockingManager {
         
         // イベントリスナー設定
         this._setupEventListeners();
+
+        // --- ここから自動追加処理 ---
+        // （コンストラクタからは削除）
+        // --- ここまで自動追加処理 ---
     }
     
     /**
@@ -828,6 +832,32 @@ class InterlockingManager {
             
             // ステータス表示を更新
             this.canvas.setStatusInfo(`線路絶縁 ${id} を削除しました`);
+        }
+    }
+
+    /**
+     * startLevers/destinationButtonsが空の場合にデフォルトを追加
+     */
+    ensureDefaultLeversAndButtons() {
+        if (!this.startLevers || this.startLevers.length === 0) {
+            this.startLevers = [
+                new StartLever(
+                    "signalLever_auto",
+                    "signal",
+                    140,
+                    420,
+                    1
+                )
+            ];
+        }
+        if (!this.destinationButtons || this.destinationButtons.length === 0) {
+            this.destinationButtons = [
+                new DestinationButton(
+                    "destButton_auto",
+                    { x: 600, y: 220 },
+                    3
+                )
+            ];
         }
     }
 }

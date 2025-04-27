@@ -93,7 +93,8 @@ class TrackNode {
 }
 
 class RouteManager {
-    constructor() {
+    constructor(interlockingManager) {
+        this.interlockingManager = interlockingManager;
         this.routes = new Map();
         this.currentMode = 'none';
         this.tempRoute = null;
@@ -152,46 +153,136 @@ class RouteManager {
         this.showGuidance('auto');
         this.updateModeIndicator('auto');
 
-        // ここで全てのてこ×着点ボタンの組み合わせで進路候補を生成し、モーダル表示
-        const trackElements = Array.from(document.querySelectorAll('[data-track-element]'))
-            .map(el => ({
-                id: el.dataset.trackId,
-                type: el.dataset.trackType,
-                normalConnection: el.dataset.normalConnection ? { id: el.dataset.normalConnection } : null,
-                reverseConnection: el.dataset.reverseConnection ? { id: el.dataset.reverseConnection } : null
-            }));
-        this.buildTrackGraph(trackElements);
+        // window.app.trackManager.tracks から線路リストを取得
+        const tracks = window.app.trackManager.tracks;
+        const trackElements = Array.isArray(tracks)
+            ? tracks
+            : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
+        // buildTrackGraph用に整形
+        const trackElementsForGraph = trackElements.map(track => {
+            // connections配列からnormal/reverseを判定してセット
+            let normalConnection = null;
+            let reverseConnection = null;
+            let connectionsArr = Array.isArray(track.connections) ? track.connections : Array.from(track.connections);
+            if (Array.isArray(connectionsArr)) {
+                connectionsArr.forEach(([endpointIndex, conn]) => {
+                    if (endpointIndex === 0) normalConnection = conn;
+                    if (endpointIndex === 1) reverseConnection = conn;
+                });
+            }
+            return {
+                id: String(track.id),
+                type: track.type,
+                endpoints: track.endpoints,
+                connections: connectionsArr, // 必ず配列で保持
+                normalConnection,
+                reverseConnection
+            };
+        });
+        console.log('trackElementsForGraph:', trackElementsForGraph);
+        console.log('track 1:', trackElementsForGraph.find(t => t.id == '1'));
+        this.buildTrackGraph(trackElementsForGraph);
+        // 端点indexを求める関数（connections優先）
+        function getEndpointIndexByConnection(track, targetTrackId) {
+            if (!track.connections) return null;
+            for (const [fromIdx, conn] of track.connections) {
+                if (conn.trackId == targetTrackId) return fromIdx;
+            }
+            return null;
+        }
+        function getNearestEndpointIndex(track, x, y) {
+            if (!track.endpoints || track.endpoints.length < 2) return 0;
+            const d0 = Math.hypot(track.endpoints[0].x - x, track.endpoints[0].y - y);
+            const d1 = Math.hypot(track.endpoints[1].x - x, track.endpoints[1].y - y);
+            return d0 < d1 ? 0 : 1;
+        }
+
         // てこ・着点ボタンの全組み合わせで候補生成
-        const levers = Array.from(document.querySelectorAll('[data-element-type$="Lever"]')).map(el => ({
-            id: el.dataset.elementId,
-            type: el.dataset.elementType
+        const levers = (this.interlockingManager.startLevers || []).map(l => ({
+            id: l.id,
+            type: l.type,
+            trackId: l.trackId !== undefined && l.trackId !== null ? String(l.trackId) : '', // 厳密に文字列化
+            x: l.x,
+            y: l.y
         }));
-        const destButtons = Array.from(document.querySelectorAll('[data-element-type="destButton"]')).map(el => ({
-            id: el.dataset.elementId
+        const destButtons = (this.interlockingManager.destinationButtons || []).map(b => ({
+            id: b.id,
+            trackId: b.trackId !== undefined && b.trackId !== null ? String(b.trackId) : '', // 厳密に文字列化
+            x: b.x,
+            y: b.y
         }));
+        console.log('--- 進路自動生成');
+        console.log('levers:', levers);
+        console.log('destButtons:', destButtons);
         let allCandidates = [];
         levers.forEach(lever => {
-            destButtons.forEach(dest => {
-                const candidates = this.generateRouteCandidates(lever.id, dest.id);
-                if (candidates.length > 0) {
-                    const validCandidates = candidates
-                        .map(points => {
-                            const route = new Route(
-                                `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
-                                lever,
-                                dest,
-                                points,
-                                true
-                            );
-                            route.calculateCost();
-                            return route;
-                        })
-                        .filter(route => this.validateRoute(route))
-                        .sort((a, b) => a.cost - b.cost);
-                    allCandidates.push(...validCandidates);
+            const leverTrack = trackElementsForGraph.find(t => t.id == lever.trackId);
+            if (!leverTrack) return;
+            for (const dest of destButtons) {
+                const destTrack = trackElementsForGraph.find(t => t.id == dest.trackId);
+                if (!destTrack) continue;
+                function getConnectedEndpointIndices(track) {
+                    let conns = track.connections;
+                    if (!Array.isArray(conns)) {
+                        if (conns && typeof conns.forEach === 'function') {
+                            // Mapの場合
+                            conns = Array.from(conns);
+                        } else {
+                            return [];
+                        }
+                    }
+                    return [...new Set(conns.map(([idx, _]) => idx))];
                 }
-            });
+                // lever
+                const leverConnected = getConnectedEndpointIndices(leverTrack);
+                let leverEpIdxs;
+                if (leverConnected.length > 0) {
+                    leverEpIdxs = leverConnected;
+                } else {
+                    leverEpIdxs = [getNearestEndpointIndex(leverTrack, lever.x, lever.y)];
+                }
+                // dest
+                const destConnected = getConnectedEndpointIndices(destTrack);
+                let destEpIdxs;
+                if (destConnected.length > 0) {
+                    destEpIdxs = destConnected;
+                } else {
+                    destEpIdxs = [getNearestEndpointIndex(destTrack, dest.x, dest.y)];
+                }
+                // デバッグ出力
+                console.log('leverConnected:', leverConnected, 'destConnected:', destConnected);
+                let bestPath = [];
+                let minLen = Infinity;
+                let bestLeverEpIdx = null;
+                let bestDestEpIdx = null;
+                leverEpIdxs.forEach(leverEpIdx => {
+                    destEpIdxs.forEach(destEpIdx => {
+                        const path = this.findOptimalRoute(lever.trackId, dest.trackId);
+                        if (path.length > 0 && path.length < minLen) {
+                            bestPath = path;
+                            minLen = path.length;
+                            bestLeverEpIdx = leverEpIdx;
+                            bestDestEpIdx = destEpIdx;
+                        }
+                    });
+                });
+                console.log(`lever.id=${lever.id}, lever.trackId=${lever.trackId}, leverEpIdxs=${leverEpIdxs}, dest.id=${dest.id}, dest.trackId=${dest.trackId}, destEpIdxs=${destEpIdxs}, bestLeverEpIdx=${bestLeverEpIdx}, bestDestEpIdx=${bestDestEpIdx}`);
+                if (bestPath.length > 0) {
+                    const route = new Route(
+                        `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
+                        lever,
+                        dest,
+                        bestPath,
+                        true
+                    );
+                    route.calculateCost();
+                    if (this.validateRoute(route)) {
+                        allCandidates.push(route);
+                    }
+                }
+            }
         });
+        console.log('allCandidates.length:', allCandidates.length);
         this.showRouteCandidates(allCandidates);
     }
 
@@ -330,34 +421,44 @@ class RouteManager {
 
     // グラフの構築
     buildTrackGraph(trackElements) {
-        this.trackGraph.clear();
+        this.trackGraph = new Map(); // Map<nodeId, TrackNode>
 
-        // ノードの作成
-        trackElements.forEach(element => {
-            if (!this.trackGraph.has(element.id)) {
-                this.trackGraph.set(element.id, new TrackNode(element.id));
+        // 1. 各trackの各端点をノードとして追加
+        trackElements.forEach(track => {
+            if (Array.isArray(track.endpoints)) {
+                track.endpoints.forEach((ep, idx) => {
+                    const nodeId = `${track.id}:${idx}`;
+                    if (!this.trackGraph.has(nodeId)) {
+                        this.trackGraph.set(nodeId, new TrackNode(nodeId));
+                    }
+                });
             }
         });
 
-        // 接続関係の設定
-        trackElements.forEach(element => {
-            const sourceNode = this.trackGraph.get(element.id);
-            
-            // 直進方向の接続
-            if (element.normalConnection) {
-                const targetNode = this.trackGraph.get(element.normalConnection.id);
-                if (targetNode) {
-                    sourceNode.addConnection(targetNode, 1, 'normal');
-                    targetNode.addConnection(sourceNode, 1, 'normal');
-                }
+        // 2. 各trackのconnectionsからエッジを追加
+        trackElements.forEach(track => {
+            if (Array.isArray(track.connections)) {
+                track.connections.forEach(([fromIdx, conn]) => {
+                    const fromNodeId = `${track.id}:${fromIdx}`;
+                    const toNodeId = `${conn.trackId}:${conn.endpointIndex}`;
+                    const fromNode = this.trackGraph.get(fromNodeId);
+                    const toNode = this.trackGraph.get(toNodeId);
+                    if (fromNode && toNode) {
+                        fromNode.addConnection(toNode, 1, 'normal');
+                        toNode.addConnection(fromNode, 1, 'normal'); // 双方向
+                    }
+                });
             }
+        });
 
-            // 分岐方向の接続
-            if (element.reverseConnection) {
-                const targetNode = this.trackGraph.get(element.reverseConnection.id);
-                if (targetNode) {
-                    sourceNode.addConnection(targetNode, 1.5, 'reverse'); // 分岐はコストを高めに設定
-                    targetNode.addConnection(sourceNode, 1.5, 'reverse');
+        // 3. 各track内の両端点もエッジで結ぶ（線路上の移動）
+        trackElements.forEach(track => {
+            if (Array.isArray(track.endpoints) && track.endpoints.length === 2) {
+                const nodeA = this.trackGraph.get(`${track.id}:0`);
+                const nodeB = this.trackGraph.get(`${track.id}:1`);
+                if (nodeA && nodeB) {
+                    nodeA.addConnection(nodeB, 1, 'track');
+                    nodeB.addConnection(nodeA, 1, 'track');
                 }
             }
         });
@@ -434,12 +535,45 @@ class RouteManager {
         );
     }
 
-    // 最適経路探索（コストマップ付き）
-    findOptimalRoute(startId, endId, additionalCosts = new Map()) {
-        if (!this.trackGraph.has(startId) || !this.trackGraph.has(endId)) {
-            throw new Error('開始点または終点が見つかりません');
+    // 最適経路探索（端点ノードグラフ対応）
+    findOptimalRoute(startTrackId, endTrackId, additionalCosts = new Map()) {
+        // デバッグ出力を追加
+        console.log('findOptimalRoute called:', startTrackId, endTrackId, 'trackGraph keys:', Array.from(this.trackGraph.keys()));
+        const startNodeIds = [
+            `${startTrackId}:0`,
+            `${startTrackId}:1`
+        ].filter(id => this.trackGraph.has(id));
+        const endNodeIds = [
+            `${endTrackId}:0`,
+            `${endTrackId}:1`
+        ].filter(id => this.trackGraph.has(id));
+        console.log('startNodeIds:', startNodeIds, 'endNodeIds:', endNodeIds);
+        if (startNodeIds.length === 0 || endNodeIds.length === 0) {
+            return [];
         }
 
+        // 2. 全ての始点-終点ペアで最短経路を探索し、最も短いものを採用
+        let bestPath = [];
+        let minCost = Infinity;
+        for (const sId of startNodeIds) {
+            for (const eId of endNodeIds) {
+                const path = this._findOptimalPathBetweenNodes(sId, eId, additionalCosts);
+                if (path.length > 0 && path.length < minCost) {
+                    bestPath = path;
+                    minCost = path.length;
+                }
+            }
+        }
+        return bestPath;
+    }
+
+    // 端点ノード間の最短経路探索（Dijkstra/BFS）
+    _findOptimalPathBetweenNodes(startId, endId, additionalCosts = new Map()) {
+        // 追加: ノードIDとグラフのキーを出力
+        console.log('startId:', startId, 'endId:', endId, 'trackGraph keys:', Array.from(this.trackGraph.keys()));
+        if (!this.trackGraph.has(startId) || !this.trackGraph.has(endId)) {
+            return [];
+        }
         const distances = new Map();
         const previous = new Map();
         const unvisited = new Set();
@@ -451,10 +585,10 @@ class RouteManager {
             unvisited.add(id);
         });
 
+        let step = 0;
         while (unvisited.size > 0) {
             let currentId = null;
             let minDistance = Infinity;
-            
             unvisited.forEach(id => {
                 const distance = distances.get(id);
                 if (distance < minDistance) {
@@ -462,22 +596,20 @@ class RouteManager {
                     currentId = id;
                 }
             });
-
             if (currentId === null || currentId === endId) break;
-
             unvisited.delete(currentId);
             const currentNode = this.trackGraph.get(currentId);
-
+            // デバッグ出力
+            console.log(`[step ${step}] currentId=${currentId}, distance=${distances.get(currentId)}`);
             currentNode.connections.forEach((connection, neighborId) => {
                 if (!unvisited.has(neighborId)) return;
-
-                // 基本コストと追加コストを考慮
                 let connectionCost = connection.cost;
                 if (additionalCosts.has(neighborId)) {
                     connectionCost += additionalCosts.get(neighborId);
                 }
-
                 const newDistance = distances.get(currentId) + connectionCost;
+                // デバッグ出力
+                console.log(`  neighborId=${neighborId}, oldDist=${distances.get(neighborId)}, newDist=${newDistance}`);
                 if (newDistance < distances.get(neighborId)) {
                     distances.set(neighborId, newDistance);
                     previous.set(neighborId, {
@@ -486,37 +618,32 @@ class RouteManager {
                     });
                 }
             });
+            step++;
         }
+        // デバッグ: 最終的なdistances, previous
+        console.log('final distances:', distances);
+        console.log('final previous:', previous);
 
         // 経路の再構築
         const path = [];
         let current = endId;
-
         while (current !== null) {
             const prev = previous.get(current);
             if (!prev) {
                 if (current !== startId) {
-                    throw new Error('有効な経路が見つかりません');
+                    return [];
                 }
                 break;
             }
-
             path.unshift({
                 id: prev.id,
                 position: prev.position
             });
             current = prev.id;
         }
-
         if (path.length > 0) {
-            const lastConnection = this.trackGraph.get(path[path.length - 1].id)
-                .connections.get(endId);
-            path.push({
-                id: endId,
-                position: lastConnection ? lastConnection.position : 'normal'
-            });
+            path.push({ id: endId, position: 'track' });
         }
-
         return path;
     }
 
@@ -836,5 +963,4 @@ class RouteManager {
     }
 }
 
-// グローバルインスタンスを作成
-const routeManager = new RouteManager(); 
+

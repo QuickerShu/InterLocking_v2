@@ -26,6 +26,7 @@ class App {
             getRoute: function(routeId) { return null; }
         };
         this.interlockingManager = new InterlockingManager(this.canvas, this.interlocking);
+        window.routeManager = new RouteManager(this.interlockingManager);
         
         // サイドパネルの初期化
         this.sidePanel = document.getElementById('side-panel');
@@ -405,6 +406,35 @@ class App {
                 if (selectElementRadio.checked) this.selectionTarget = 'element';
             });
         }
+
+        // レイアウト保存ボタン
+        document.getElementById('exportLayoutBtn').addEventListener('click', () => {
+            this.exportLayoutAsJson();
+        });
+    }
+
+    // レイアウトデータをJSONでエクスポート
+    exportLayoutAsJson() {
+        // tracksを配列化
+        const tracksArray = Array.isArray(this.trackManager.tracks)
+            ? this.trackManager.tracks
+            : Array.from(this.trackManager.tracks.values ? this.trackManager.tracks.values() : Object.values(this.trackManager.tracks));
+        const layoutData = {
+            tracks: tracksArray.map(track => track.toJSON ? track.toJSON() : track),
+            startLevers: this.interlockingManager.startLevers,
+            destinationButtons: this.interlockingManager.destinationButtons,
+            trackInsulations: this.interlockingManager.trackInsulations
+        };
+        const json = JSON.stringify(layoutData, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'layout.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // プレビュー要素を作成するヘルパーメソッド
@@ -1763,6 +1793,8 @@ class App {
             this.drawMode = 'cursor';
             this.canvas.setDrawMode('cursor');
             document.getElementById('cursorBtn').classList.add('active');
+            // ここでデフォルトのてこ・着点ボタンを自動追加
+            this.interlockingManager.ensureDefaultLeversAndButtons();
         }
         
         // ステータス表示の更新
