@@ -766,12 +766,13 @@ class RouteManager {
             routeElement.className = 'route-item candidate';
             // 経路情報を整形
             let routeInfo = '';
+            if (route.points && route.points.length > 0) {
             for (let i = 0; i < route.points.length - 1; i++) {
                 const curr = route.points[i];
                 const next = route.points[i + 1];
-                const currTrackId = curr.id.split(':')[0];
-                const currEpIdx = curr.id.split(':')[1];
-                const nextEpIdx = next.id.split(':')[1];
+                    const currTrackId = curr.id ? curr.id.split(':')[0] : '';
+                    const currEpIdx = curr.id ? curr.id.split(':')[1] : '';
+                    const nextEpIdx = next.id ? next.id.split(':')[1] : '';
                 // track情報取得
                 let track = null;
                 if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
@@ -790,7 +791,6 @@ class RouteManager {
                     // point_left, point_right, double_cross, double_slip_x で方向判定
                     let showDirection = false;
                     if (track.type === 'point_left' || track.type === 'point_right') {
-                        // 0-1, 1-0: normal, 0-2, 2-0: reverse
                         if ((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) {
                             showDirection = true;
                             if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
@@ -801,7 +801,6 @@ class RouteManager {
                             else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
                         }
                     } else if (track.type === 'double_cross') {
-                        // 0-1,1-0,2-3,3-2: normal, 0-2,2-0,1-3,3-1: reverse
                         if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
                             showDirection = true;
                             if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
@@ -812,7 +811,6 @@ class RouteManager {
                             else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
                         }
                     } else if (track.type === 'double_slip_x') {
-                        // 0-1,1-0,2-3,3-2: normal, 0-3,3-0,1-2,2-1: reverse
                         if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
                             showDirection = true;
                             if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
@@ -828,9 +826,14 @@ class RouteManager {
             }
             // 最後の端点
             const last = route.points[route.points.length - 1];
+                if (last && last.id) {
             const lastTrackId = last.id.split(':')[0];
             const lastEpIdx = last.id.split(':')[1];
             routeInfo += `線路${lastTrackId} 端点${lastEpIdx}`;
+                }
+            } else {
+                routeInfo = '経路情報がありません';
+            }
             routeElement.innerHTML = `
                 <div class=\"route-header\">\n                    <span class=\"route-name\">${route.name}</span>\n                    <span class=\"route-generation-mode auto\">自動生成候補</span>\n                    <div class=\"route-actions\">\n                        <button class=\"route-action-btn\" onclick=\"routeManager.addRouteFromCandidate(${idx})\">追加</button>\n                    </div>\n                </div>\n                <div class=\"route-details\">\n                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>\n                    <div>着点: 着点ボタン ${route.destination.id}</div>\n                    <div class=\"route-points\">${routeInfo}</div>\n                    <div>コスト: ${route.cost}</div>\n                </div>\n            `;
             modalBody.appendChild(routeElement);
@@ -887,7 +890,12 @@ class RouteManager {
         modal.style.display = 'flex';
         // 閉じるボタンイベント
         const closeBtn = document.getElementById('closeRouteModalBtn');
-        closeBtn.onclick = () => { modal.style.display = 'none'; };
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                modal.style.display = 'none';
+                this.exitAutoMode(); // モードを必ずオフにする
+            };
+        }
         // 候補を一時保存
         this.candidateRoutes = candidates;
     }
@@ -956,40 +964,51 @@ class RouteManager {
         this.routes.forEach(route => {
             const routeElement = document.createElement('div');
             routeElement.className = 'route-item';
+            // 分岐器（ポイント）のみ抽出し詳細表示
+            const pointDetails = route.points
+                .map((p, idx) => {
+                    // trackId取得
+                    const trackId = p.trackId || p.id;
+                    // track取得
+                    let track = null;
+                    if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
+                        const tracks = window.app.trackManager.tracks;
+                        if (typeof tracks.get === 'function') {
+                            track = tracks.get(trackId) || tracks.get(String(trackId)) || tracks.get(Number(trackId));
+                        } else if (typeof tracks === 'object') {
+                            track = tracks[trackId] || tracks[String(trackId)] || tracks[Number(trackId)];
+                        }
+                    }
+                    if (track && track.isPoint) {
+                        const ep = p.endpoint !== undefined ? `端点: ${p.endpoint}` : '';
+                        const dir = p.direction !== undefined ? `方向: ${p.direction}` : '';
+                        const pos = p.position !== undefined ? `位置: ${p.position === 'normal' ? '直進' : p.position === 'reverse' ? '分岐' : p.position}` : '';
+                        return `<div class=\"route-point\"><span>分岐器: ${trackId}</span> <span>${ep}</span> <span>${dir}</span> <span>${pos}</span></div>`;
+                    }
+                    return '';
+                })
+                .filter(html => html)
+                .join('');
             routeElement.innerHTML = `
-                <div class="route-header">
-                    <span class="route-name">${route.name}</span>
-                    <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">
-                        ${route.isAuto ? '自動生成' : '手動生成'}
-                    </span>
-                    <div class="route-actions">
-                        <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">
-                            ${route.isActive ? '解除' : '設定'}
-                        </button>
-                        <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">
-                            削除
-                        </button>
+                <div class=\"route-header\">
+                    <span class=\"route-name\">${route.name}</span>
+                    <span class=\"route-generation-mode ${route.isAuto ? 'auto' : 'manual'}\">${route.isAuto ? '自動生成' : '手動生成'}</span>
+                    <div class=\"route-actions\">
+                        <button class=\"route-action-btn\" onclick=\"routeManager.activateRoute('${route.id}')\">${route.isActive ? '解除' : '設定'}</button>
+                        <button class=\"route-action-btn delete\" onclick=\"routeManager.removeRoute('${route.id}')\">削除</button>
                     </div>
                 </div>
-                <div class="route-details">
+                <div class=\"route-details\">
                     <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
                     <div>着点: 着点ボタン ${route.destination.id}</div>
-                    <div class="route-points">
-                        ${route.points.map(p => `
-                            <div class="route-point">
-                                <span>ポイント: ${p.id}</span>
-                                <span>位置: ${p.position === 'normal' ? '直進' : '分岐'}</span>
-                            </div>
-                        `).join('')}
-                    </div>
+                    <div class=\"route-points\">${pointDetails || '<span style=\"color:#888\">分岐器はありません</span>'}</div>
                 </div>
             `;
-            
             this.routeList.appendChild(routeElement);
         });
     }
 
-    activateRoute(routeId) {
+    async activateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (route) {
             if (route.isActive) {
@@ -1009,6 +1028,41 @@ class RouteManager {
                 if (canActivate) {
                     route.activate();
                     this.activeRoutes.add(route);
+                    // --- デバッグ出力 ---
+                    if (window.app && window.app.trackManager) {
+                        const tracks = window.app.trackManager.tracks;
+                        console.log('=== 進路開通デバッグ ===');
+                        console.log('routeId:', routeId, 'route:', route);
+                        if (route.points && Array.isArray(route.points)) {
+                            for (let idx = 0; idx < route.points.length; idx++) {
+                                const step = route.points[idx];
+                                let track = null;
+                                // trackId型対応
+                                if (typeof tracks.get === 'function') {
+                                    track = tracks.get(step.trackId) || tracks.get(String(step.trackId)) || tracks.get(Number(step.trackId));
+                                } else if (typeof tracks === 'object') {
+                                    track = tracks[step.trackId] || tracks[String(step.trackId)] || tracks[Number(step.trackId)];
+                                }
+                                console.log(`[${idx}] trackId:`, step.trackId || step.id, 
+                                    'type:', track?.type, 
+                                    'isPoint:', track?.isPoint, 
+                                    'step.direction:', step.direction, 
+                                    'pointStates:', route.pointStates?.[track?.id]);
+                                if (track) {
+                                    track.setStatus && track.setStatus('selected');
+                                    if (track.isPoint) {
+                                        // 分岐器stepのみdirectionを使う
+                                        const dir = step.direction || (route.pointStates && route.pointStates[track.id]) || 'normal';
+                                        if (track.setPointDirection) {
+                                            await track.setPointDirection(dir);
+                                            console.log('分岐器', track.id, 'setPointDirection:', dir);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (window.app && window.app.canvas) window.app.canvas.draw();
+                    }
                 }
             }
             this.updateRouteList();
@@ -1060,6 +1114,299 @@ class RouteManager {
             this.modeIndicator.classList.add('active', mode);
             this.modeText.textContent = mode === 'auto' ? '自動生成モード' : '手動生成モード';
         }
+    }
+
+    // 進路自動生成・候補生成・経路探索・UI表示などの既存メソッドを全て削除
+    // 新しい進路生成アルゴリズム実装のための空メソッドを用意
+    generateAllRouteCandidates() {
+        // 進路候補テーブルを初期化
+        this.routeCandidates = [];
+        const startLevers = this.interlockingManager.startLevers || [];
+        const destButtons = this.interlockingManager.destinationButtons || [];
+        if (!startLevers.length || !destButtons.length) {
+            // UI側でエラー表示すること
+            return;
+        }
+        // てこ×着点ボタンの全組み合わせ
+        for (const lever of startLevers) {
+            for (const button of destButtons) {
+                // てこに関連付けられた線路IDの両端点から探索
+                const track = this.interlockingManager.trackManager.getTrack(lever.trackId);
+                if (!track) continue;
+                // 着点trackの遠い端点を取得
+                const destTrack = this.interlockingManager.trackManager.getTrack(button.trackId);
+                let destEpIdxFar = 0;
+                if (destTrack && Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
+                    let maxDist = -Infinity;
+                    destTrack.endpoints.forEach((ep, idx) => {
+                        const dx = ep.x - button.x;
+                        const dy = ep.y - button.y;
+                        const dist = dx * dx + dy * dy;
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            destEpIdxFar = idx;
+                        }
+                    });
+                }
+                // てこtrackの遠い端点を取得
+                let leverEpIdxFar = 0;
+                if (track && Array.isArray(track.endpoints) && track.endpoints.length >= 2) {
+                    let maxDist = -Infinity;
+                    track.endpoints.forEach((ep, idx) => {
+                        const dx = ep.x - lever.x;
+                        const dy = ep.y - lever.y;
+                        const dist = dx * dx + dy * dy;
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            leverEpIdxFar = idx;
+                        }
+                    });
+                }
+                // 遠い端点のみでDFS
+                const routes = this._findAllRoutesFromEndpoint(track, leverEpIdxFar, button, destEpIdxFar);
+                // 最短経路のみを候補に
+                let minLen = Infinity;
+                let bestRoute = null;
+                for (const route of routes) {
+                    if (route.path.length < minLen) {
+                        minLen = route.path.length;
+                        bestRoute = route;
+                    }
+                }
+                if (bestRoute) {
+                    this.routeCandidates.push({
+                        startLever: lever,
+                        destButton: button,
+                        path: bestRoute.path,
+                        pointStates: bestRoute.pointStates
+                    });
+                }
+            }
+        }
+        console.log('this.routeCandidates:', this.routeCandidates);
+        // --- 追加: routeCandidatesを自動的にroutesへ登録 ---
+        this.routeCandidates.forEach(candidate => {
+            const route = new Route(
+                `${this.getLeverTypeName(candidate.startLever.type)} ${this.routes.size + 1}`,
+                candidate.startLever,
+                candidate.destButton,
+                candidate.path,
+                true
+            );
+            route.calculateCost();
+            this.addRoute(route);
+        });
+        this.updateRouteList();
+    }
+
+    // 経路探索本体（DFS、分岐器等は全方向考慮）
+    _findAllRoutesFromEndpoint(startTrack, startEpIdx, destButton, destEpIdxFar) {
+        // DFS探索用の内部関数
+        const results = [];
+        const visited = new Set(); // "trackId:endpointIndex" 形式
+        const pointStates = {};
+
+        // 着点ボタンのtrackId, endpointIndexを取得
+        const destTrackId = String(destButton.trackId);
+        // 着点ボタンの端点indexを特定（最も近い端点と遠い端点の両方を取得）
+        let destEpIdxNear = 0;
+        if (destButton.x !== undefined && destButton.y !== undefined && startTrack.trackManager) {
+            const destTrack = startTrack.trackManager.getTrack(destTrackId);
+            if (destTrack && Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
+                let minDist = Infinity;
+                destTrack.endpoints.forEach((ep, idx) => {
+                    const dx = ep.x - destButton.x;
+                    const dy = ep.y - destButton.y;
+                    const dist = dx * dx + dy * dy;
+                    if (dist < minDist) {
+                        minDist = dist;
+                        destEpIdxNear = idx;
+                    }
+                });
+            }
+        }
+
+        // DFS本体
+        const dfs = (track, epIdx, path, pointStates) => {
+            // デバッグログ追加
+            console.log('[DFS] track.id:', track.id, 'epIdx:', epIdx, 'visited:', Array.from(visited));
+            const key = `${track.id}:${epIdx}`;
+            if (visited.has(key)) return;
+            visited.add(key);
+
+            // ゴール判定: track.idがdestTrackIdならゴール（端点番号は問わない）
+            if (String(track.id) === destTrackId) {
+                // 分岐器ならdirectionをstepに含める
+                let step = { trackId: track.id, endpoint: epIdx };
+                if (track.isPoint && pointStates[track.id]) {
+                    step.direction = pointStates[track.id];
+                }
+                results.push({
+                    path: [...path, step],
+                    pointStates: { ...pointStates }
+                });
+                visited.delete(key);
+                return;
+            }
+
+            // 端点に接続がなければ終了
+            let conn = null;
+            if (track.getConnection) {
+                conn = track.getConnection(epIdx);
+            } else if (track.connections) {
+                if (typeof track.connections.get === 'function') {
+                    conn = track.connections.get(epIdx);
+                } else if (Array.isArray(track.connections)) {
+                    // [ [endpointIndex, conn], ... ] 形式
+                    const found = track.connections.find(([idx, _]) => idx === epIdx);
+                    if (found) conn = found[1];
+                }
+            }
+            if (conn) {
+                // 次のtrack, endpointIndex
+                let nextTrack = null;
+                if (track.trackManager) {
+                    nextTrack = track.trackManager.getTrack(conn.trackId);
+                } else if (this.interlockingManager && this.interlockingManager.trackManager) {
+                    nextTrack = this.interlockingManager.trackManager.getTrack(conn.trackId);
+                }
+                if (nextTrack) {
+                    // 分岐器の場合は両方向を試す
+                    if (nextTrack.isPoint) {
+                        ['normal', 'reverse'].forEach(dir => {
+                            pointStates[nextTrack.id] = dir;
+                            let nextEpIdx = null;
+                            if (nextTrack.type === 'point_left') {
+                                if (dir === 'normal') {
+                                    nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
+                                } else {
+                                    nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
+                                }
+                            } else if (nextTrack.type === 'point_right') {
+                                if (dir === 'normal') {
+                                    nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
+                                } else {
+                                    nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
+                                }
+                            } else {
+                                nextEpIdx = conn.endpointIndex;
+                            }
+                            if (nextEpIdx !== null && nextEpIdx !== epIdx) {
+                                // 今いるtrackが分岐器ならdirectionをstepに含める
+                                let step = { trackId: track.id, endpoint: epIdx };
+                                if (track.isPoint && pointStates[track.id]) {
+                                    step.direction = pointStates[track.id];
+                                }
+                                dfs(nextTrack, nextEpIdx, [...path, step], pointStates);
+                            }
+                            delete pointStates[nextTrack.id];
+                        });
+                    } else {
+                        // 今いるtrackが分岐器ならdirectionをstepに含める
+                        let step = { trackId: track.id, endpoint: epIdx };
+                        if (track.isPoint && pointStates[track.id]) {
+                            step.direction = pointStates[track.id];
+                        }
+                        dfs(nextTrack, conn.endpointIndex, [...path, step], pointStates);
+                    }
+                }
+            }
+            // --- 追加: 同じtrack内の他の端点にも移動 ---
+            if (Array.isArray(track.endpoints)) {
+                for (let i = 0; i < track.endpoints.length; i++) {
+                    if (i !== epIdx) {
+                        // 今いるtrackが分岐器ならdirectionをstepに含める
+                        let step = { trackId: track.id, endpoint: i };
+                        if (track.isPoint && pointStates[track.id]) {
+                            step.direction = pointStates[track.id];
+                        }
+                        dfs(track, i, [...path, step], pointStates);
+                    }
+                }
+            }
+            visited.delete(key);
+        };
+
+        dfs(startTrack, startEpIdx, [], {});
+        return results;
+    }
+
+    showRouteCandidatesModal() {
+        // モーダル要素取得
+        const modal = document.getElementById('routeModal');
+        const modalBody = document.getElementById('routeModalBody');
+        if (!modal || !modalBody) return;
+        modalBody.innerHTML = '';
+        // 候補リスト
+        const header = document.createElement('div');
+        header.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">進路候補テーブル</h3>';
+        modalBody.appendChild(header);
+        if (!this.routeCandidates || this.routeCandidates.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.textContent = '進路候補がありません';
+            emptyMsg.style.color = '#888';
+            modalBody.appendChild(emptyMsg);
+        } else {
+            this._clearRouteHighlight(); // 既存ハイライト解除
+            this.routeCandidates.forEach((route, idx) => {
+                const routeDiv = document.createElement('div');
+                routeDiv.className = 'route-item candidate';
+                let html = `<div><b>てこ:</b> ${route.startLever.id}　<b>着点:</b> ${route.destButton.id}</div>`;
+                html += '<ul style="margin-left:1em;">';
+                (route.path || []).forEach(step => {
+                    html += `<li>線路ID: ${step.trackId ?? step.id}, 端点: ${step.endpoint ?? ''}, 開通方向: ${step.direction ?? ''}</li>`;
+                });
+                html += '</ul>';
+                routeDiv.innerHTML = html;
+                // --- ここでクリックイベントを追加 ---
+                routeDiv.addEventListener('click', () => {
+                    this._clearRouteHighlight();
+                    this._highlightRouteCandidate(route.path, route.pointStates);
+                });
+                modalBody.appendChild(routeDiv);
+            });
+        }
+        // モーダル表示
+        modal.style.display = 'block';
+    }
+
+    // 進路候補のハイライトをクリア
+    _clearRouteHighlight() {
+        if (!window.app || !window.app.trackManager) return;
+        const tracks = window.app.trackManager.tracks;
+        if (typeof tracks.forEach === 'function') {
+            tracks.forEach(track => {
+                if (track && track.setStatus) track.setStatus('normal');
+                if (track && track.isPoint && track.setPointDirection) track.setPointDirection('normal');
+            });
+        } else if (typeof tracks.values === 'function') {
+            for (const track of tracks.values()) {
+                if (track && track.setStatus) track.setStatus('normal');
+                if (track && track.isPoint && track.setPointDirection) track.setPointDirection('normal');
+            }
+        }
+        if (window.app && window.app.canvas) window.app.canvas.draw();
+    }
+
+    // 進路候補のパス・ポイント状態をUIに反映
+    _highlightRouteCandidate(path, pointStates) {
+        if (!window.app || !window.app.trackManager) return;
+        const tracks = window.app.trackManager.tracks;
+        // パス上の線路をハイライト
+        path.forEach(step => {
+            let track = null;
+            if (typeof tracks.get === 'function') {
+                track = tracks.get(step.trackId);
+            } else if (typeof tracks === 'object') {
+                track = tracks[step.trackId] || tracks[Number(step.trackId)];
+            }
+            if (track && track.setStatus) track.setStatus('selected');
+            // 分岐器の場合は仮想的に方向を反映
+            if (track && track.isPoint && pointStates && pointStates[track.id]) {
+                if (track.setPointDirection) track.setPointDirection(pointStates[track.id]);
+            }
+        });
+        if (window.app && window.app.canvas) window.app.canvas.draw();
     }
 }
 

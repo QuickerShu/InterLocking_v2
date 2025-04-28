@@ -25,7 +25,7 @@ class App {
             onDestinationButtonSelected: function(button) { return true; },
             getRoute: function(routeId) { return null; }
         };
-        this.interlockingManager = new InterlockingManager(this.canvas, this.interlocking);
+        this.interlockingManager = new InterlockingManager(this.canvas, this.interlocking, this.trackManager);
         window.routeManager = new RouteManager(this.interlockingManager);
         
         // サイドパネルの初期化
@@ -391,8 +391,9 @@ class App {
                 this.setStatusInfo('編集モードに切り替えてください。');
                 return;
             }
-            // 進路の自動生成モーダルを表示
-            routeManager.enterAutoMode();
+            // 新しい進路生成アルゴリズムの呼び出し
+            routeManager.generateAllRouteCandidates();
+            routeManager.showRouteCandidatesModal();
         });
         
         // 選択対象ラジオボタンのイベント
@@ -411,6 +412,26 @@ class App {
         document.getElementById('exportLayoutBtn').addEventListener('click', () => {
             this.exportLayoutAsJson();
         });
+
+        // 進路候補モーダルの閉じるボタン
+        const closeRouteModalBtn = document.getElementById('closeRouteModalBtn');
+        if (closeRouteModalBtn) {
+            closeRouteModalBtn.addEventListener('click', () => {
+                document.getElementById('routeModal').style.display = 'none';
+            });
+        }
+
+        // --- デバッグ用データ保存ボタンを追加 ---
+        const debugBtn = document.createElement('button');
+        debugBtn.id = 'debugSaveBtn';
+        debugBtn.textContent = 'デバッグデータ保存';
+        debugBtn.title = '進路・候補・線路データをJSONで保存';
+        debugBtn.style.marginLeft = '10px';
+        debugBtn.addEventListener('click', () => {
+            this.saveDebugData();
+        });
+        const toolbar = document.getElementById('toolbar');
+        if (toolbar) toolbar.appendChild(debugBtn);
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -431,6 +452,25 @@ class App {
         const a = document.createElement('a');
         a.href = url;
         a.download = 'layout.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // デバッグ用データ保存
+    saveDebugData() {
+        const data = {
+            routes: window.routeManager ? Array.from(window.routeManager.routes.values()) : [],
+            routeCandidates: window.routeManager ? window.routeManager.routeCandidates : [],
+            tracks: this.trackManager ? (Array.isArray(this.trackManager.tracks) ? this.trackManager.tracks : Array.from(this.trackManager.tracks.values ? this.trackManager.tracks.values() : Object.values(this.trackManager.tracks))) : []
+        };
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'debug_data.json';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1554,17 +1594,18 @@ class App {
             });
             if (button && this.selectedRouteStartLever) {
                 this.selectedRouteDestButton = button;
-                // 進路候補テーブルから該当進路を検索
-                const candidate = (this.routeCandidates || []).find(route =>
-                    route.startLever.id === this.selectedRouteStartLever.id &&
-                    route.destButton.id === button.id
-                );
-                if (candidate) {
-                    // 線路の色やポイント状態を反映
-                    this.highlightRoute(candidate);
-                    this.setStatusInfo(`進路「${candidate.startLever.id}→${candidate.destButton.id}」を選択しました。`);
-                } else {
-                    this.setStatusInfo('該当する進路候補がありません。', true);
+                // --- 追加: routesから該当進路を検索し自動開通 ---
+                if (window.routeManager && window.routeManager.routes) {
+                    const foundRoute = Array.from(window.routeManager.routes.values()).find(route =>
+                        route.lever.id === this.selectedRouteStartLever.id &&
+                        route.destination.id === button.id
+                    );
+                    if (foundRoute) {
+                        window.routeManager.activateRoute(foundRoute.id);
+                        this.setStatusInfo(`進路「${foundRoute.lever.id}→${foundRoute.destination.id}」を開通しました。`);
+                    } else {
+                        this.setStatusInfo('該当する進路候補がありません。', true);
+                    }
                 }
                 // 状態リセット
                 this.selectedRouteStartLever = null;
@@ -3108,128 +3149,16 @@ class App {
         this.canvas.trackCanvas.addEventListener('click', trackSelectHandler);
     }
 
-    // 進路自動生成モードを開始
-    startAutoRouteGeneration() {
-        // 編集モードでのみ実行可能
-        if (this.appMode !== 'edit') {
-            this.setStatusInfo('編集モードでのみ進路生成が可能です。');
-            return;
-        }
-        // 新しい進路生成ロジックをここに実装予定
-        this.setStatusInfo('進路候補の探索を開始します...');
-        this.generateAllRoutes();
+    // --- ここから追加 ---
+    /**
+     * マウスイベントからキャンバス座標（スケール・スクロール考慮済み）を取得
+     * @param {MouseEvent} e
+     * @returns {{x: number, y: number}}
+     */
+    getScaledMousePosition(e) {
+        return this.canvas.getMousePosition(e);
     }
-
-    // すべての可能な進路を生成
-    generateAllRoutes() {
-        // てこ・着点ボタンの全組み合わせで経路探索し、進路候補テーブルに保存
-        this.routeCandidates = [];
-        const startLevers = this.interlockingManager.startLevers;
-        const destButtons = this.interlockingManager.destinationButtons;
-        if (!startLevers.length || !destButtons.length) {
-            this.setStatusInfo('発点てこまたは着点ボタンが配置されていません。', true);
-            return;
-        }
-        let totalRoutes = 0;
-        for (const lever of startLevers) {
-            for (const button of destButtons) {
-                // てこ・着点ボタン間の全経路を探索
-                const routes = this.findAllRoutes(lever, button);
-                routes.forEach(route => {
-                    this.routeCandidates.push(route);
-                    totalRoutes++;
-                });
-            }
-        }
-        this.setStatusInfo(`進路候補テーブルを作成しました（${totalRoutes}件）`);
-    }
-
-    // 2点間のすべての可能な経路を探索（DFSで網羅的に探索）
-    findAllRoutes(startLever, destButton) {
-        const routes = [];
-        const visited = new Set();
-        const currentPath = [];
-        const pointStates = new Map(); // 分岐器の状態を記録
-        const startTrack = this.trackManager.getTrack(startLever.trackId);
-        if (!startTrack) return routes;
-        const dfs = (currentTrack) => {
-            if (!currentTrack || visited.has(currentTrack.id)) return;
-            visited.add(currentTrack.id);
-            currentPath.push(currentTrack);
-            // 着点に到達した場合、経路を記録
-            if (currentTrack.id === destButton.trackId) {
-                routes.push({
-                    startLever: startLever,
-                    destButton: destButton,
-                    path: [...currentPath],
-                    pointStates: new Map(pointStates)
-                });
-            } else {
-                // 接続された線路をすべて探索
-                (currentTrack.connections || []).forEach((connection) => {
-                    const nextTrack = this.trackManager.getTrack(connection.trackId);
-                    if (!nextTrack) return;
-                    // 分岐器の場合、両方向を試す
-                    if (nextTrack.type && nextTrack.type.startsWith('point_')) {
-                        // 通常方向
-                        pointStates.set(nextTrack.id, 'normal');
-                        dfs(nextTrack);
-                        // 分岐方向
-                        pointStates.set(nextTrack.id, 'reverse');
-                        dfs(nextTrack);
-                        pointStates.delete(nextTrack.id);
-                    } else {
-                        dfs(nextTrack);
-                    }
-                });
-            }
-            visited.delete(currentTrack.id);
-            currentPath.pop();
-        };
-        dfs(startTrack);
-        return routes;
-    }
-
-    // マウス位置を取得するメソッドを更新
-    getScaledMousePosition(event) {
-        if (!event) return { x: 0, y: 0 };
-
-        const canvas = this.canvas.trackCanvas;
-        const rect = canvas.getBoundingClientRect();
-        const canvasContainer = document.getElementById('canvas-container');
-        
-        // キャンバスの表示サイズに対する実際のサイズの比率
-        const scaleX = canvas.width / rect.width;
-        const scaleY = canvas.height / rect.height;
-        
-        // クライアント座標からキャンバス座標に変換
-        return {
-            x: (event.clientX - rect.left) * scaleX,
-            y: (event.clientY - rect.top) * scaleY
-        };
-    }
-
-    // 進路ハイライト処理
-    highlightRoute(route) {
-        // すべての線路のハイライト状態をリセット
-        this.trackManager.tracks.forEach(track => {
-            track.isHighlighted = false;
-        });
-        // 進路経路上の線路をハイライト
-        (route.path || []).forEach(trackObj => {
-            const track = this.trackManager.getTrack(trackObj.id || trackObj.trackId);
-            if (track) track.isHighlighted = true;
-        });
-        // ポイントの開通方向を反映（仮: pointStatesをtrackにセット）
-        if (route.pointStates) {
-            for (const [pointId, direction] of route.pointStates.entries()) {
-                const pointTrack = this.trackManager.getTrack(pointId);
-                if (pointTrack) pointTrack.pointDirection = direction;
-            }
-        }
-        // キャンバス再描画
-        this.canvas.draw();
-    }
+    // --- ここまで追加 ---
 }
 
 // アプリケーションの初期化

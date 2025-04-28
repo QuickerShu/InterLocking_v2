@@ -5,12 +5,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 100,
-          "y": 220
+          "x": 320,
+          "y": 200
         },
         {
-          "x": 280,
-          "y": 220
+          "x": 520,
+          "y": 200
         }
       ],
       "connections": [
@@ -22,7 +22,7 @@
           }
         ]
       ],
-      "status": "normal",
+      "status": "selected",
       "isPoint": false,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -34,16 +34,16 @@
       "type": "point_left",
       "endpoints": [
         {
-          "x": 280,
-          "y": 220
-        },
-        {
-          "x": 360,
-          "y": 220
-        },
-        {
-          "x": 320,
+          "x": 520,
           "y": 200
+        },
+        {
+          "x": 600,
+          "y": 200
+        },
+        {
+          "x": 560,
+          "y": 180
         }
       ],
       "connections": [
@@ -69,7 +69,7 @@
           }
         ]
       ],
-      "status": "normal",
+      "status": "selected",
       "isPoint": true,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -81,12 +81,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 320,
-          "y": 200
+          "x": 560,
+          "y": 180
         },
         {
-          "x": 400,
-          "y": 160
+          "x": 640,
+          "y": 140
         }
       ],
       "connections": [
@@ -105,7 +105,7 @@
           }
         ]
       ],
-      "status": "normal",
+      "status": "selected",
       "isPoint": false,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -117,12 +117,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 400,
-          "y": 160
+          "x": 660,
+          "y": 140
         },
         {
-          "x": 700,
-          "y": 160
+          "x": 840,
+          "y": 140
         }
       ],
       "connections": [
@@ -134,7 +134,7 @@
           }
         ]
       ],
-      "status": "normal",
+      "status": "selected",
       "isPoint": false,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -146,12 +146,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 360,
-          "y": 220
+          "x": 600,
+          "y": 200
         },
         {
-          "x": 700,
-          "y": 220
+          "x": 840,
+          "y": 200
         }
       ],
       "connections": [
@@ -173,10 +173,10 @@
   ],
   "startLevers": [
     {
-      "id": "signalLever_1745766198165_661",
+      "id": "signalLever_1745849600580_752",
       "type": "signal",
-      "x": 140,
-      "y": 220,
+      "x": 360,
+      "y": 200,
       "trackId": 1,
       "state": "neutral",
       "selected": false,
@@ -190,19 +190,19 @@
   ],
   "destinationButtons": [
     {
-      "id": "87903299-b3fb-4d10-864b-c9a5238383ee",
+      "id": "destButton_1745849603976_495",
       "type": "destButton",
-      "x": 660,
-      "y": 160,
+      "x": 800,
+      "y": 140,
       "state": "normal",
       "routes": [],
       "trackId": 4
     },
     {
-      "id": "c277ec28-b0a5-4467-adf0-563747a6aba0",
+      "id": "destButton_1745849607754_166",
       "type": "destButton",
-      "x": 660,
-      "y": 220,
+      "x": 800,
+      "y": 200,
       "state": "normal",
       "routes": [],
       "trackId": 5

@@ -1,0 +1,472 @@
+{
+  "routes": [
+    {
+      "id": "25379eba-e130-42ce-8423-fc367dc15770",
+      "name": "signal 1",
+      "lever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destination": {
+        "id": "destButton_1745849603976_495",
+        "type": "destButton",
+        "x": 800,
+        "y": 140,
+        "state": "normal",
+        "routes": [],
+        "trackId": 4
+      },
+      "points": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 2,
+          "direction": "reverse"
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 4,
+          "endpoint": 0
+        }
+      ],
+      "isAuto": true
+    },
+    {
+      "id": "a618eb4b-bc6c-449a-86fa-a92181837c5f",
+      "name": "signal 2",
+      "lever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destination": {
+        "id": "destButton_1745849607754_166",
+        "type": "destButton",
+        "x": 800,
+        "y": 200,
+        "state": "normal",
+        "routes": [],
+        "trackId": 5
+      },
+      "points": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 0
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 5,
+          "endpoint": 0
+        }
+      ],
+      "isAuto": true
+    },
+    {
+      "id": "6f42c2da-9698-4034-8e7d-a75135b3ac45",
+      "name": "signal 3",
+      "lever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destination": {
+        "id": "destButton_1745849607754_166",
+        "type": "destButton",
+        "x": 800,
+        "y": 200,
+        "state": "normal",
+        "routes": [],
+        "trackId": 5
+      },
+      "points": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 5,
+          "endpoint": 0
+        }
+      ],
+      "isAuto": true
+    }
+  ],
+  "routeCandidates": [
+    {
+      "startLever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destButton": {
+        "id": "destButton_1745849603976_495",
+        "type": "destButton",
+        "x": 800,
+        "y": 140,
+        "state": "normal",
+        "routes": [],
+        "trackId": 4
+      },
+      "path": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 2,
+          "direction": "reverse"
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 4,
+          "endpoint": 0
+        }
+      ],
+      "pointStates": {}
+    },
+    {
+      "startLever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destButton": {
+        "id": "destButton_1745849607754_166",
+        "type": "destButton",
+        "x": 800,
+        "y": 200,
+        "state": "normal",
+        "routes": [],
+        "trackId": 5
+      },
+      "path": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 0
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 5,
+          "endpoint": 0
+        }
+      ],
+      "pointStates": {}
+    },
+    {
+      "startLever": {
+        "id": "signalLever_1745849600580_752",
+        "type": "signal",
+        "x": 360,
+        "y": 200,
+        "trackId": 1,
+        "state": "neutral",
+        "selected": false,
+        "routes": [],
+        "animation": {
+          "blink": false,
+          "blinkCount": 0,
+          "active": false
+        }
+      },
+      "destButton": {
+        "id": "destButton_1745849607754_166",
+        "type": "destButton",
+        "x": 800,
+        "y": 200,
+        "state": "normal",
+        "routes": [],
+        "trackId": 5
+      },
+      "path": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 5,
+          "endpoint": 0
+        }
+      ],
+      "pointStates": {}
+    }
+  ],
+  "tracks": [
+    {
+      "id": 1,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 320,
+          "y": 200
+        },
+        {
+          "x": 520,
+          "y": 200
+        }
+      ],
+      "connections": [
+        [
+          1,
+          {
+            "trackId": 2,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "selected",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 2,
+      "type": "point_left",
+      "endpoints": [
+        {
+          "x": 520,
+          "y": 200
+        },
+        {
+          "x": 600,
+          "y": 200
+        },
+        {
+          "x": 560,
+          "y": 180
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 1,
+            "endpointIndex": 1
+          }
+        ],
+        [
+          2,
+          {
+            "trackId": 3,
+            "endpointIndex": 0
+          }
+        ],
+        [
+          1,
+          {
+            "trackId": 5,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "selected",
+      "isPoint": true,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 3,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 560,
+          "y": 180
+        },
+        {
+          "x": 640,
+          "y": 140
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
+            "endpointIndex": 2
+          }
+        ],
+        [
+          1,
+          {
+            "trackId": 4,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "selected",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 4,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 660,
+          "y": 140
+        },
+        {
+          "x": 840,
+          "y": 140
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 3,
+            "endpointIndex": 1
+          }
+        ]
+      ],
+      "status": "selected",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 5,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 600,
+          "y": 200
+        },
+        {
+          "x": 840,
+          "y": 200
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
+            "endpointIndex": 1
+          }
+        ]
+      ],
+      "status": "normal",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    }
+  ]
+}

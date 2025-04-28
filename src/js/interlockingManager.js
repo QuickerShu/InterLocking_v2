@@ -6,9 +6,10 @@
 // 必要なクラスはグローバル変数から参照
 
 class InterlockingManager {
-    constructor(canvas, interlockingSystem) {
+    constructor(canvas, interlockingSystem, trackManager) {
         this.canvas = canvas;
         this.interlockingSystem = interlockingSystem;
+        this.trackManager = trackManager;
         
         // 各要素のコレクション
         this.startLevers = [];
@@ -245,7 +246,6 @@ class InterlockingManager {
         // ドラッグ終了
         if (this.editModeState.isDragging) {
             this.editModeState.isDragging = false;
-            
             // ドラッグ終了時、必要に応じて線路IDを更新
             if (this.editModeState.selectedElement) {
                 const element = this.editModeState.selectedElement;
@@ -256,16 +256,16 @@ class InterlockingManager {
                         element.trackId = nearestTrackId;
                     }
                 }
-                
-                // 新規配置直後の場合は選択状態を解除する
-                // アプリケーション側から新規配置後のフラグをチェック
-                if (window.app && window.app.canvas.preventNextClickEvent) {
-                    // 選択状態を解除
-                    this.editModeState.selectedElement = null;
-                    this.editModeState.elementType = null;
-                }
             }
-            
+            // ドラッグ終了時に選択状態を必ず解除
+            this.editModeState.selectedElement = null;
+            this.editModeState.elementType = null;
+            this.canvas.draw();
+        } else {
+            // ドラッグ中でなくても、マウスアップ時は必ずドラッグ状態を解除
+            this.editModeState.isDragging = false;
+            this.editModeState.selectedElement = null;
+            this.editModeState.elementType = null;
             this.canvas.draw();
         }
     }
@@ -522,22 +522,19 @@ class InterlockingManager {
      * @returns {DestinationButton} 追加されたボタン
      */
     addDestinationButton(options) {
-        const { id, position, trackId } = options;
-        
+        const { id, x, y, trackId } = options;
         // 既存のIDチェック
         if (this.destinationButtons.some(button => button.id === id)) {
             throw new Error(`ID ${id} の着点ボタンは既に存在します`);
         }
-        
         // ボタンの作成
-        const button = new DestinationButton(id, position, trackId);
-        
+        const button = new DestinationButton(x, y);
+        button.id = id;
+        button.trackId = trackId;
         // コレクションに追加
         this.destinationButtons.push(button);
-        
         // 画面の再描画をリクエスト
         this.canvas.draw();
-        
         return button;
     }
     
