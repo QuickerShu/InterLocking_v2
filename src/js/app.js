@@ -1214,7 +1214,15 @@ class App {
                     // クリックで確定配置
                     // 仮パーツの現在の端点座標・回転角そのままで配置
                     this.trackManager.addTrack(this._previewPlacingTrack);
+                    this.updatePointsList(); // ここで必ずポイント一覧を更新
                     this.setStatusInfo('パーツを配置しました。続けて配置できます。');
+                    if (this._previewPlacingTrack.type && (
+                        this._previewPlacingTrack.type.startsWith('point_') ||
+                        this._previewPlacingTrack.type === 'double_cross' ||
+                        this._previewPlacingTrack.type === 'double_slip_x'
+                    )) {
+                        this.updateSelectedProperties(this._previewPlacingTrack, 'track', {onlyPointDcc: true});
+                    }
                     this._previewPlacingTrack = null;
                     this._previewPlacingTrackId = null;
                     this._previewPlacingTrackBaseEndpoints = null;
@@ -1425,13 +1433,6 @@ class App {
             pointLabel.className = 'point-label';
             pointLabel.textContent = `ポイント #${index + 1}`;
             
-            const pointAddress = document.createElement('span');
-            pointAddress.className = 'point-address';
-            pointAddress.textContent = `アドレス: ${point.address || 'なし'}`;
-            
-            pointInfo.appendChild(pointLabel);
-            pointInfo.appendChild(pointAddress);
-            
             const pointDirection = document.createElement('div');
             pointDirection.className = 'point-direction';
             
@@ -1465,12 +1466,11 @@ class App {
             addressInput.value = point.address || '';
             addressInput.min = 0;
             addressInput.max = 2044;
-            
-            // アドレス変更時のイベント
-            addressInput.addEventListener('change', () => {
-                const newAddress = parseInt(addressInput.value, 10);
-                this.trackManager.updatePointAddress(point.id, newAddress);
-            });
+            // ラベルと一緒にまとめる
+            const addressLabel = document.createElement('label');
+            addressLabel.textContent = 'アドレス: ';
+            addressLabel.appendChild(addressInput);
+            pointControls.appendChild(addressLabel);
             
             const switchButton = document.createElement('button');
             switchButton.className = 'switch-button';
@@ -1528,7 +1528,6 @@ class App {
                 }
             });
             
-            pointControls.appendChild(addressInput);
             pointControls.appendChild(switchButton);
             
             pointItem.appendChild(pointInfo);
@@ -2886,37 +2885,71 @@ class App {
      * 選択されたトラックのプロパティを更新
      * @param {Track} track 選択されたトラック
      */
-    updateSelectedProperties(track, type = 'track') {
+    updateSelectedProperties(track, type = 'track', options = {}) {
         const propertiesContainer = document.getElementById('selected-properties');
         if (!propertiesContainer) return;
-
-        if (!track) {
-            propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
+        // ポイント・ダブルクロス・ダブルスリップ配置直後のみ簡易入力UI
+        const isPointLike = type === 'track' && track && (
+            (track.type && track.type.startsWith('point_')) ||
+            track.type === 'double_cross' ||
+            track.type === 'double_slip_x'
+        );
+        if (options.onlyPointDcc && isPointLike) {
+            propertiesContainer.innerHTML = `
+                <div class="property-group">
+                    <h3>ポイント設定</h3>
+                    <div class="input-group">
+                        <label for="point-address">DCCアドレス:</label>
+                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
+                        <label for="invert-dcc">DCC出力を反転</label>
+                    </div>
+                    <button id="point-prop-done" class="property-action-btn" style="margin-top:12px;">完了</button>
+                </div>
+            `;
+            // イベント設定
+            const addressInput = document.getElementById('point-address');
+            if (addressInput) {
+                addressInput.addEventListener('change', () => {
+                    const newAddress = parseInt(addressInput.value, 10);
+                    if (!isNaN(newAddress)) {
+                        track.dccAddress = newAddress;
+                        this.updatePointsList && this.updatePointsList();
+                    }
+                });
+            }
+            const invertDccCheckbox = document.getElementById('invert-dcc');
+            if (invertDccCheckbox) {
+                invertDccCheckbox.addEventListener('change', () => {
+                    track.invertDcc = invertDccCheckbox.checked;
+                    this.updatePointsList && this.updatePointsList();
+                });
+            }
+            const doneBtn = document.getElementById('point-prop-done');
+            if (doneBtn) {
+                doneBtn.addEventListener('click', () => {
+                    propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
+                });
+            }
             return;
         }
-
-        let html = '';
-
-        switch (type) {
-            case 'track':
-                html = this.createTrackPropertiesHTML(track);
-                break;
-            case 'lever':
-                html = this.createLeverPropertiesHTML(track);
-                break;
-            case 'button':
-                html = this.createButtonPropertiesHTML(track);
-                break;
-            case 'insulation':
-                html = this.createInsulationPropertiesHTML(track);
-                break;
+        // 通常のプロパティ表示
+        if (typeof origUpdateSelectedProperties === 'function') {
+            origUpdateSelectedProperties.call(this, track, type);
         }
-
-        // プロパティパネルを更新
-        propertiesContainer.innerHTML = html;
-
-        // イベントリスナーを設定
-        this.setupPropertyEventListeners(track, type);
+        if (!track) return;
+        if (isPointLike) {
+            const doneBtn = document.createElement('button');
+            doneBtn.textContent = '完了';
+            doneBtn.className = 'property-action-btn';
+            doneBtn.style.marginTop = '12px';
+            doneBtn.addEventListener('click', () => {
+                propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
+            });
+            propertiesContainer.appendChild(doneBtn);
+        }
     }
 
     /**
@@ -2942,7 +2975,7 @@ class App {
                     <h3>ポイント設定</h3>
                     <div class="input-group">
                         <label for="point-address">アドレス:</label>
-                        <input type="number" id="point-address" value="${track.address || ''}" min="0" max="2044">
+                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
                     </div>
                     <div class="checkbox-container">
                         <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
@@ -3052,7 +3085,7 @@ class App {
                         addressInput.addEventListener('change', () => {
                             const newAddress = parseInt(addressInput.value, 10);
                             if (!isNaN(newAddress)) {
-                                element.address = newAddress;
+                                element.dccAddress = newAddress;
                                 this.updatePointsList();
                             }
                         });
@@ -3159,6 +3192,11 @@ class App {
         return this.canvas.getMousePosition(e);
     }
     // --- ここまで追加 ---
+
+    // TrackManagerのリスナー用メソッド
+    onTracksChanged() {
+        this.updatePointsList();
+    }
 }
 
 // アプリケーションの初期化
@@ -3189,3 +3227,113 @@ function logicalToScreen(x, y, scale, scrollX, scrollY) {
         top:  y * scale - scrollY
     };
 }
+
+// ... existing code ...
+// --- ここから追加 ---
+// DOMContentLoaded後の初期化に追加
+const origInit = window.onload || (()=>{});
+document.addEventListener('DOMContentLoaded', () => {
+    origInit();
+    // ポイント一覧モーダルの開閉
+    const openBtn = document.getElementById('openPointsModalBtn');
+    const modal = document.getElementById('pointsModal');
+    const closeBtn = document.getElementById('closePointsModalBtn');
+    if (openBtn && modal && closeBtn) {
+        openBtn.addEventListener('click', () => {
+            window.app.renderPointsModalList();
+            modal.style.display = 'flex';
+        });
+        closeBtn.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+    }
+});
+
+// ポイント一覧モーダルの描画
+App.prototype.renderPointsModalList = function() {
+    const container = document.getElementById('points-modal-list');
+    if (!container) return;
+    // ポイント・ダブルクロス・ダブルスリップも含める
+    const points = Array.from(this.trackManager.tracks.values()).filter(track =>
+        (track.type && track.type.startsWith('point_')) ||
+        track.type === 'double_cross' ||
+        track.type === 'double_slip_x'
+    );
+    container.innerHTML = '';
+    if (points.length === 0) {
+        container.innerHTML = '<p>ポイントがありません</p>';
+        return;
+    }
+    points.forEach((track, index) => {
+        const isInverted = track && track.invertDcc;
+        const displayDirection = isInverted ? (track.pointDirection === 'normal' ? 'reverse' : 'normal') : track.pointDirection;
+        const address = track ? track.dccAddress : '';
+        const item = document.createElement('div');
+        item.className = 'point-item';
+        item.style.marginBottom = '8px';
+        item.innerHTML = `
+            <div class="point-info">
+                <span class="point-label">${track.type === 'double_cross' ? 'ダブルクロス' : track.type === 'double_slip_x' ? 'ダブルスリップ' : `ポイント #${index + 1}`}</span>
+                <span class="point-address">アドレス: <input type="number" class="address-input" value="${address}" min="0" max="2044" style="width:60px;"></span>
+            </div>
+            <div class="point-direction">
+                <div class="direction-indicator ${displayDirection === 'normal' ? 'direction-normal' : 'direction-reverse'}"></div>
+                <span>${displayDirection === 'normal' ? '直進' : '分岐'}${isInverted ? ' (DCC反転)' : ''}</span>
+            </div>
+            <div class="point-controls" style="margin-top:4px;">
+                <label style="margin-right:8px;">
+                    <input type="checkbox" class="invert-dcc-checkbox" ${isInverted ? 'checked' : ''}> DCC反転
+                </label>
+                <button class="switch-button">ポイント切替</button>
+            </div>
+        `;
+        // アドレス入力
+        const addrInput = item.querySelector('.address-input');
+        addrInput.addEventListener('change', () => {
+            const newAddress = parseInt(addrInput.value, 10);
+            if (track) track.dccAddress = newAddress;
+            this.renderPointsModalList();
+        });
+        // 反転チェック
+        const invertChk = item.querySelector('.invert-dcc-checkbox');
+        invertChk.addEventListener('change', () => {
+            if (track) track.invertDcc = invertChk.checked;
+            this.renderPointsModalList();
+        });
+        // 切替ボタン
+        const switchBtn = item.querySelector('.switch-button');
+        switchBtn.addEventListener('click', async () => {
+            if (!track) return;
+            const newDir = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+            await this.trackManager.switchPoint(track.id, newDir);
+            this.renderPointsModalList();
+            this.canvas.draw();
+        });
+        container.appendChild(item);
+    });
+};
+// --- ここまで追加 ---
+
+// ... existing code ...
+// プロパティパネルのポイント表示を「配置直後のみ・完了で消す」ようにするには、
+// updateSelectedProperties内で「完了」ボタンを追加し、押されたらパネルを空にする
+// ↓この部分を削除
+// const origUpdateSelectedProperties = App.prototype.updateSelectedProperties;
+// App.prototype.updateSelectedProperties = function(track, type = 'track') {
+//     origUpdateSelectedProperties.call(this, track, type);
+//     if (!track) return;
+//     if (type === 'track' && track.type && track.type.startsWith('point_')) {
+//         const propertiesContainer = document.getElementById('selected-properties');
+//         if (propertiesContainer) {
+//             const doneBtn = document.createElement('button');
+//             doneBtn.textContent = '完了';
+//             doneBtn.className = 'property-action-btn';
+//             doneBtn.style.marginTop = '12px';
+//             doneBtn.addEventListener('click', () => {
+//                 propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
+//             });
+//             propertiesContainer.appendChild(doneBtn);
+//         }
+//     }
+// };
+// ... existing code ...

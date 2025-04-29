@@ -868,27 +868,8 @@
         
         <div id="side-panel">
             <div class="panel-section">
-                <h2>ポイント一覧</h2>
-                <div id="points-container" class="point-list">
-                    <!-- ポイント一覧がここに動的に表示される -->
-                    <div class="point-item">
-                        <div class="point-info">
-                            <span class="point-label">ポイント #1</span>
-                            <span class="point-address">アドレス: 1</span>
-                        </div>
-                        <div class="point-direction">
-                            <div class="direction-indicator direction-normal"></div>
-                            <span>直進</span>
-                        </div>
-                        <div class="point-controls">
-                            <label for="address-input-1" style="display:none;">アドレス</label>
-                            <input type="number" id="address-input-1" class="address-input" value="1" min="0" max="2044" title="アドレス" placeholder="アドレス">
-                            <button class="switch-button">ポイント切替</button>
-                        </div>
-                    </div>
-                </div>
+                <button id="openPointsModalBtn" class="control-btn" style="width:100%;margin-bottom:8px;">ポイント一覧</button>
             </div>
-            
             <div class="panel-section">
                 <h2>選択パーツのプロパティ</h2>
                 <div id="selected-properties">
@@ -940,6 +921,17 @@
             <div class="modal-buttons" style="justify-content:center;">
                 <button id="conflictOkBtn" class="control-btn" style="background:#2196F3;">OK</button>
                 <button id="conflictCancelBtn" class="control-btn" style="background:#888;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ポイント一覧モーダル -->
+    <div id="pointsModal" class="modal" style="display:none;z-index:3000;">
+        <div class="modal-content" style="max-width:500px;max-height:80vh;overflow-y:auto;position:relative;">
+            <button id="closePointsModalBtn" class="modal-buttons" style="position:absolute;top:8px;right:8px;font-size:20px;width:32px;height:32px;line-height:1;">×</button>
+            <h2 style="margin-top:0;">ポイント一覧</h2>
+            <div id="points-modal-list">
+                <!-- ここにポイント一覧が動的に描画されます -->
             </div>
         </div>
     </div>
