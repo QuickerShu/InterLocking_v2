@@ -1614,6 +1614,25 @@ class App {
                 this.selectedRouteDestButton = null;
                 return;
             }
+            // --- 分岐器クリックで開通方向を切り替え ---
+            if (track && track.type && track.type.startsWith('point_')) {
+                const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                this.trackManager.switchPoint(track.id, newDirection);
+                this.setStatusInfo(`ポイントID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                this.canvas.draw();
+                return;
+            }
+            // --- 分岐器・ダブルクロス・ダブルスリップクリックで開通方向を切り替え ---
+            if (track && track.type && (track.type.startsWith('point_') || track.type === 'double_cross' || track.type === 'double_slip_x')) {
+                const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                this.trackManager.switchPoint(track.id, newDirection);
+                let typeLabel = 'ポイント';
+                if (track.type === 'double_cross') typeLabel = 'ダブルクロス';
+                if (track.type === 'double_slip_x') typeLabel = 'ダブルスリップ';
+                this.setStatusInfo(`${typeLabel}ID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                this.canvas.draw();
+                return;
+            }
             // どちらも該当しない場合は通常の選択処理をスキップ
             return;
         }

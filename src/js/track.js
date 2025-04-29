@@ -90,6 +90,7 @@ class Track {
                     { x: snapToGrid(x - 2 * gridSize), y: snapToGrid(y + gridSize) }, // 左下
                     { x: snapToGrid(x + 2 * gridSize), y: snapToGrid(y + gridSize) }  // 右下
                 ];
+                if (!track.pointDirection) track.pointDirection = 'normal';
                 break;
             case 'double_slip_x':
                 track.endpoints = [
@@ -98,6 +99,7 @@ class Track {
                     { x: snapToGrid(x - 2 * gridSize), y: snapToGrid(y +  gridSize) }, // 左下
                     { x: snapToGrid(x + 2 * gridSize), y: snapToGrid(y -  gridSize) }  // 右上
                 ];
+                if (!track.pointDirection) track.pointDirection = 'normal';
                 break;
             case 'crossing':
                 track.endpoints = [
