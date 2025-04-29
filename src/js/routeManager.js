@@ -481,11 +481,11 @@ class RouteManager {
                                         posA = posB = 'track';
                                     }
                                 }
-                                // double_cross: 0-1,2-3=normal, 0-2,1-3=reverse
+                                // double_cross: 0-1,2-3=normal, 0-3,1-2=reverse
                                 else if (track.type === 'double_cross') {
                                     if (((i === 0 && j === 1) || (i === 1 && j === 0)) || ((i === 2 && j === 3) || (i === 3 && j === 2))) {
                                         posA = posB = 'normal';
-                                    } else if (((i === 0 && j === 2) || (i === 2 && j === 0)) || ((i === 1 && j === 3) || (i === 3 && j === 1))) {
+                                    } else if (((i === 0 && j === 3) || (i === 3 && j === 0)) || ((i === 1 && j === 2) || (i === 2 && j === 1))) {
                                         posA = posB = 'reverse';
                                     } else {
                                         posA = posB = 'track';
@@ -941,6 +941,7 @@ class RouteManager {
         if (route) {
             if (route.isActive) {
                 route.deactivate();
+                this.resetAllTracksStatus(); // 進路削除時に全線路をnormalに
             }
             this.routes.delete(routeId);
             this.updateRouteList();
@@ -953,6 +954,7 @@ class RouteManager {
                 route.deactivate();
             }
         });
+        this.resetAllTracksStatus(); // 全進路解除時にも全線路をnormalに
         this.routes.clear();
         this.updateRouteList();
     }
@@ -1014,6 +1016,7 @@ class RouteManager {
         if (route.isActive) {
             route.deactivate();
             this.activeRoutes.delete(route);
+            this.resetAllTracksStatus(); // 進路解除ボタンで全線路をnormalに
             this.updateRouteList();
             return;
         }
@@ -1034,24 +1037,80 @@ class RouteManager {
                 r.deactivate();
                 this.activeRoutes.delete(r);
             });
+            this.resetAllTracksStatus(); // 競合解除時にも全線路をnormalに
         }
 
-        // 進路構成中の全線路をROUTE色に
+        // --- 分岐器ごとに「最後に出るstepのdirection」だけを採用するロジック ---
+        // 1. 経路上の分岐器の出口stepを記録
+        const lastDirectionByPoint = {};
+        if (route.points && Array.isArray(route.points)) {
+            for (let idx = 0; idx < route.points.length; idx++) {
+                const step = route.points[idx];
+                if (!step.trackId && !step.id) continue;
+                const trackId = step.trackId || step.id;
+                let track = null;
+                if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
+                    const tracks = window.app.trackManager.tracks;
+                    if (typeof tracks.get === 'function') {
+                        track = tracks.get(trackId) || tracks.get(String(trackId)) || tracks.get(Number(trackId));
+                    } else if (typeof tracks === 'object') {
+                        track = tracks[trackId] || tracks[String(trackId)] || tracks[Number(trackId)];
+                    }
+                }
+                if (track && track.isPoint && step.direction) {
+                    // 分岐器の出口stepのdirectionを記録（上書きでOK: 最後の出口stepが残る）
+                    lastDirectionByPoint[trackId] = step.direction;
+                }
+            }
+        }
+
+        // 2. 経路上の全線路のstatus/directionを設定
         if (window.app && window.app.trackManager) {
             const tracks = window.app.trackManager.tracks;
+            // まず全trackのrouteSegmentsをリセット
+            for (const t of (typeof tracks.values === 'function' ? tracks.values() : Object.values(tracks))) {
+                t.routeSegments = undefined;
+            }
+            // 経路内線分を記録
+            const routeSegmentsByTrack = {};
+            if (route.points && Array.isArray(route.points)) {
+                // ダブルクロスやポイントの線分を特定
+                for (let idx = 0; idx < route.points.length - 1; idx++) {
+                    const step = route.points[idx];
+                    const nextStep = route.points[idx + 1];
+                    const trackId = step.trackId || step.id;
+                    const nextTrackId = nextStep.trackId || nextStep.id;
+                    if (trackId === nextTrackId) {
+                        // 同じtrack内の移動（ダブルクロスやポイントの通過）
+                        if (!routeSegmentsByTrack[trackId]) routeSegmentsByTrack[trackId] = {in: [], out: []};
+                        routeSegmentsByTrack[trackId].in.push({from: step.endpoint, to: nextStep.endpoint, direction: step.direction || nextStep.direction});
+                    }
+                }
+            }
+            // 全trackにrouteSegmentsをセット
+            for (const t of (typeof tracks.values === 'function' ? tracks.values() : Object.values(tracks))) {
+                if (routeSegmentsByTrack[t.id]) {
+                    t.routeSegments = routeSegmentsByTrack[t.id];
+                } else {
+                    t.routeSegments = {in: [], out: []};
+                }
+            }
+            // status/directionの設定
             if (route.points && Array.isArray(route.points)) {
                 for (let idx = 0; idx < route.points.length; idx++) {
                     const step = route.points[idx];
                     let track = null;
+                    const trackId = step.trackId || step.id;
                     if (typeof tracks.get === 'function') {
-                        track = tracks.get(step.trackId) || tracks.get(String(step.trackId)) || tracks.get(Number(step.trackId));
+                        track = tracks.get(trackId) || tracks.get(String(trackId)) || tracks.get(Number(trackId));
                     } else if (typeof tracks === 'object') {
-                        track = tracks[step.trackId] || tracks[String(step.trackId)] || tracks[Number(step.trackId)];
+                        track = tracks[trackId] || tracks[String(trackId)] || tracks[Number(trackId)];
                     }
                     if (track) {
                         track.setStatus && track.setStatus('ROUTE');
                         if (track.isPoint) {
-                            const dir = step.direction || (route.pointStates && route.pointStates[track.id]) || 'normal';
+                            // 分岐器は「最後の出口stepのdirection」だけを採用
+                            const dir = lastDirectionByPoint[trackId] || 'normal';
                             if (track.setPointDirection) {
                                 await track.setPointDirection(dir);
                             }
@@ -1291,34 +1350,79 @@ class RouteManager {
                 if (nextTrack) {
                     // 分岐器の場合は両方向を試す
                     if (nextTrack.isPoint) {
-                        ['normal', 'reverse'].forEach(dir => {
-                            pointStates[nextTrack.id] = dir;
-                            let nextEpIdx = null;
-                            if (nextTrack.type === 'point_left') {
-                                if (dir === 'normal') {
-                                    nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
-                                } else {
-                                    nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
+                        if (nextTrack.type === 'double_cross') {
+                            // double_cross: 0-1,2-3=normal, 0-3,1-2=reverse
+                            const pairs = [
+                                { pair: [[0,1],[1,0],[2,3],[3,2]], dir: 'normal' },
+                                { pair: [[0,3],[3,0],[1,2],[2,1]], dir: 'reverse' }
+                            ];
+                            for (const {pair, dir} of pairs) {
+                                for (const [a, b] of pair) {
+                                    if ((conn.endpointIndex === a && epIdx === b) || (conn.endpointIndex === b && epIdx === a)) {
+                                        pointStates[nextTrack.id] = dir;
+                                        let step = { trackId: track.id, endpoint: epIdx };
+                                        if (track.isPoint && pointStates[track.id]) {
+                                            step.direction = pointStates[track.id];
+                                        }
+                                        // ★ nextTrackがdouble_crossの場合、step.directionを必ずセット
+                                        let nextStep = { trackId: nextTrack.id, endpoint: conn.endpointIndex, direction: dir };
+                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates);
+                                        delete pointStates[nextTrack.id];
+                                        break;
+                                    }
                                 }
-                            } else if (nextTrack.type === 'point_right') {
-                                if (dir === 'normal') {
-                                    nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
-                                } else {
-                                    nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
-                                }
-                            } else {
-                                nextEpIdx = conn.endpointIndex;
                             }
-                            if (nextEpIdx !== null && nextEpIdx !== epIdx) {
-                                // 今いるtrackが分岐器ならdirectionをstepに含める
-                                let step = { trackId: track.id, endpoint: epIdx };
-                                if (track.isPoint && pointStates[track.id]) {
-                                    step.direction = pointStates[track.id];
+                        } else if (nextTrack.type === 'double_slip_x') {
+                            // double_slip_x: 0-1,2-3=normal, 0-3,1-2=reverse
+                            const pairs = [
+                                { pair: [[0,1],[1,0],[2,3],[3,2]], dir: 'normal' },
+                                { pair: [[0,3],[3,0],[1,2],[2,1]], dir: 'reverse' }
+                            ];
+                            for (const {pair, dir} of pairs) {
+                                for (const [a, b] of pair) {
+                                    if ((conn.endpointIndex === a && epIdx === b) || (conn.endpointIndex === b && epIdx === a)) {
+                                        pointStates[nextTrack.id] = dir;
+                                        let step = { trackId: track.id, endpoint: epIdx };
+                                        if (track.isPoint && pointStates[track.id]) {
+                                            step.direction = pointStates[track.id];
+                                        }
+                                        let nextStep = { trackId: nextTrack.id, endpoint: conn.endpointIndex, direction: dir };
+                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates);
+                                        delete pointStates[nextTrack.id];
+                                        break;
+                                    }
                                 }
-                                dfs(nextTrack, nextEpIdx, [...path, step], pointStates);
                             }
-                            delete pointStates[nextTrack.id];
-                        });
+                        } else {
+                            // 通常ポイント
+                            ['normal', 'reverse'].forEach(dir => {
+                                pointStates[nextTrack.id] = dir;
+                                let nextEpIdx = null;
+                                if (nextTrack.type === 'point_left') {
+                                    if (dir === 'normal') {
+                                        nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
+                                    } else {
+                                        nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
+                                    }
+                                } else if (nextTrack.type === 'point_right') {
+                                    if (dir === 'normal') {
+                                        nextEpIdx = conn.endpointIndex === 0 ? 1 : 0;
+                                    } else {
+                                        nextEpIdx = conn.endpointIndex === 0 ? 2 : 0;
+                                    }
+                                } else {
+                                    nextEpIdx = conn.endpointIndex;
+                                }
+                                if (nextEpIdx !== null && nextEpIdx !== epIdx) {
+                                    let step = { trackId: track.id, endpoint: epIdx };
+                                    if (track.isPoint && pointStates[track.id]) {
+                                        step.direction = pointStates[track.id];
+                                    }
+                                    dfs(nextTrack, nextEpIdx, [...path, step], pointStates);
+                                }
+                                delete pointStates[nextTrack.id];
+                            });
+                        }
                     } else {
                         // 今いるtrackが分岐器ならdirectionをstepに含める
                         let step = { trackId: track.id, endpoint: epIdx };
@@ -1333,10 +1437,22 @@ class RouteManager {
             if (Array.isArray(track.endpoints)) {
                 for (let i = 0; i < track.endpoints.length; i++) {
                     if (i !== epIdx) {
-                        // 今いるtrackが分岐器ならdirectionをstepに含める
                         let step = { trackId: track.id, endpoint: i };
-                        if (track.isPoint && pointStates[track.id]) {
-                            step.direction = pointStates[track.id];
+                        if (track.isPoint) {
+                            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                                // normal: 0-1,2-3  reverse: 0-3,1-2
+                                if (((i === 0 && epIdx === 1) || (i === 1 && epIdx === 0)) ||
+                                    ((i === 2 && epIdx === 3) || (i === 3 && epIdx === 2))) {
+                                    step.direction = 'normal';
+                                } else if (((i === 0 && epIdx === 3) || (i === 3 && epIdx === 0)) ||
+                                           ((i === 1 && epIdx === 2) || (i === 2 && epIdx === 1))) {
+                                    step.direction = 'reverse';
+                                } else {
+                                    continue; // それ以外は許容しない
+                                }
+                            } else if (pointStates[track.id]) {
+                                step.direction = pointStates[track.id];
+                            }
                         }
                         dfs(track, i, [...path, step], pointStates);
                     }
@@ -1424,6 +1540,23 @@ class RouteManager {
                 if (track.setPointDirection) track.setPointDirection(pointStates[track.id]);
             }
         });
+        if (window.app && window.app.canvas) window.app.canvas.draw();
+    }
+
+    resetAllTracksStatus() {
+        // 全ての線路のstatusをnormalに戻す
+        if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
+            const tracks = window.app.trackManager.tracks;
+            if (typeof tracks.forEach === 'function') {
+                tracks.forEach(track => {
+                    track.setStatus && track.setStatus('normal');
+                });
+            } else if (typeof tracks === 'object') {
+                Object.values(tracks).forEach(track => {
+                    track.setStatus && track.setStatus('normal');
+                });
+            }
+        }
         if (window.app && window.app.canvas) window.app.canvas.draw();
     }
 }

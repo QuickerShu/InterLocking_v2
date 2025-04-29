@@ -206,13 +206,12 @@ class Track {
      */
     async setPointDirection(direction) {
         if (!this.isPoint) return false;
-        
         // 方向の検証
         if (direction !== 'normal' && direction !== 'reverse') {
             console.error('無効なポイント方向:', direction);
             return false;
         }
-        
+        console.log(`[setPointDirection] track.id=${this.id}, type=${this.type}, direction=${direction}（変更前: ${this.pointDirection}）`);
         // DCCアドレスがある場合は制御コマンドを送信
         if (this.dccAddress && window.app && window.app.isDSAirConnected) {
             try {
@@ -220,7 +219,6 @@ class Track {
                 const dccDirection = this.invertDcc ? 
                     (direction === 'normal' ? 'reverse' : 'normal') : 
                     direction;
-                
                 // DSAirにポイント切替コマンドを送信
                 const result = await DSAir.switchPoint(this.dccAddress, dccDirection);
                 if (!result.success) {
@@ -232,10 +230,9 @@ class Track {
                 // DSAir送信に失敗しても仮想的に切り替えるため、エラーリターンは行わない
             }
         }
-        
         // ポイント方向を更新（DSAirの成功/失敗に関わらず常に更新）
         this.pointDirection = direction;
-        
+        console.log(`[setPointDirection] track.id=${this.id} のpointDirectionが ${this.pointDirection} になりました`);
         return true;
     }
 

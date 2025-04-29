@@ -5,12 +5,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 320,
-          "y": 200
+          "x": 100,
+          "y": 140
         },
         {
-          "x": 520,
-          "y": 200
+          "x": 200,
+          "y": 140
         }
       ],
       "connections": [
@@ -22,7 +22,7 @@
           }
         ]
       ],
-      "status": "selected",
+      "status": "ROUTE",
       "isPoint": false,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -31,18 +31,22 @@
     },
     {
       "id": 2,
-      "type": "point_left",
+      "type": "double_cross",
       "endpoints": [
         {
-          "x": 520,
-          "y": 200
+          "x": 200,
+          "y": 140
         },
         {
-          "x": 600,
-          "y": 200
+          "x": 280,
+          "y": 140
         },
         {
-          "x": 560,
+          "x": 200,
+          "y": 180
+        },
+        {
+          "x": 280,
           "y": 180
         }
       ],
@@ -55,21 +59,28 @@
           }
         ],
         [
-          2,
+          1,
           {
             "trackId": 3,
             "endpointIndex": 0
           }
         ],
         [
-          1,
+          2,
           {
-            "trackId": 5,
+            "trackId": 4,
+            "endpointIndex": 1
+          }
+        ],
+        [
+          3,
+          {
+            "trackId": 6,
             "endpointIndex": 0
           }
         ]
       ],
-      "status": "selected",
+      "status": "ROUTE",
       "isPoint": true,
       "pointDirection": "normal",
       "dccAddress": 0,
@@ -81,77 +92,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 560,
-          "y": 180
-        },
-        {
-          "x": 640,
-          "y": 140
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 2,
-            "endpointIndex": 2
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 4,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "selected",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 4,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 660,
+          "x": 280,
           "y": 140
         },
         {
-          "x": 840,
-          "y": 140
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 3,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "selected",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 5,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 600,
-          "y": 200
-        },
-        {
-          "x": 840,
-          "y": 200
+          "x": 500,
+          "y": 160
         }
       ],
       "connections": [
@@ -169,15 +115,124 @@
       "dccAddress": 0,
       "invertDcc": false,
       "visible": true
+    },
+    {
+      "id": 4,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 120,
+          "y": 220
+        },
+        {
+          "x": 200,
+          "y": 180
+        }
+      ],
+      "connections": [
+        [
+          1,
+          {
+            "trackId": 2,
+            "endpointIndex": 2
+          }
+        ]
+      ],
+      "status": "normal",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 5,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 300,
+          "y": 200
+        },
+        {
+          "x": 480,
+          "y": 320
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 6,
+            "endpointIndex": 1
+          }
+        ]
+      ],
+      "status": "ROUTE",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 6,
+      "type": "straight",
+      "endpoints": [
+        {
+          "x": 280,
+          "y": 180
+        },
+        {
+          "x": 300,
+          "y": 200
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
+            "endpointIndex": 3
+          }
+        ],
+        [
+          1,
+          {
+            "trackId": 5,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "ROUTE",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
     }
   ],
   "startLevers": [
     {
-      "id": "signalLever_1745849600580_752",
+      "id": "signalLever_1745932800302_108",
       "type": "signal",
-      "x": 360,
-      "y": 200,
+      "x": 120,
+      "y": 140,
       "trackId": 1,
+      "state": "neutral",
+      "selected": false,
+      "routes": [],
+      "animation": {
+        "blink": false,
+        "blinkCount": 0,
+        "active": false
+      }
+    },
+    {
+      "id": "signalLever_1745932803644_385",
+      "type": "signal",
+      "x": 140,
+      "y": 200,
+      "trackId": 4,
       "state": "neutral",
       "selected": false,
       "routes": [],
@@ -190,19 +245,19 @@
   ],
   "destinationButtons": [
     {
-      "id": "destButton_1745849603976_495",
+      "id": "destButton_1745932806466_571",
       "type": "destButton",
-      "x": 800,
-      "y": 140,
+      "x": 480,
+      "y": 160,
       "state": "normal",
       "routes": [],
-      "trackId": 4
+      "trackId": 3
     },
     {
-      "id": "destButton_1745849607754_166",
+      "id": "destButton_1745932808660_76",
       "type": "destButton",
-      "x": 800,
-      "y": 200,
+      "x": 440,
+      "y": 300,
       "state": "normal",
       "routes": [],
       "trackId": 5
