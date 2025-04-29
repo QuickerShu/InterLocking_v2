@@ -886,12 +886,12 @@ class RouteManager {
             });
         }
         // モーダル表示
-        modal.style.display = 'flex';
+        modal.classList.add('show');
         // 閉じるボタンイベント
         const closeBtn = document.getElementById('closeRouteModalBtn');
         if (closeBtn) {
             closeBtn.onclick = () => {
-                modal.style.display = 'none';
+                modal.classList.remove('show');
                 this.exitAutoMode(); // モードを必ずオフにする
             };
         }
@@ -1135,9 +1135,9 @@ class RouteManager {
             if (body) {
                 body.innerHTML = `競合する進路が既に開通しています。<br>OKを押すと既存進路（${conflicts.map(r => r.name).join('、')}）を解除して新しい進路を開通します。<br>キャンセルで中止します。`;
             }
-            modal.style.display = 'flex';
+            modal.classList.add('show');
             const cleanup = () => {
-                modal.style.display = 'none';
+                modal.classList.remove('show');
                 okBtn.onclick = null;
                 cancelBtn.onclick = null;
             };
@@ -1501,7 +1501,7 @@ class RouteManager {
             });
         }
         // モーダル表示
-        modal.style.display = 'block';
+        modal.classList.add('show');
     }
 
     // 進路候補のハイライトをクリア

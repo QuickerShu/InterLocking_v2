@@ -302,10 +302,16 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0,0,0,0.5);
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             z-index: 2000;
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-content {
@@ -902,17 +908,19 @@
     </div>
 
     <!-- 進路候補・登録済み進路モーダル -->
-    <div id="routeModal" class="modal" style="display:none;">
-        <div class="modal-content" style="max-width:600px;">
-            <button id="closeRouteModalBtn" class="modal-buttons" style="position:absolute;top:8px;right:8px;">×</button>
-            <div id="routeModalBody">
+    <div id="routeModal" class="modal">
+        <div class="modal-content" style="max-width:600px; position:relative; display:flex; flex-direction:column; align-items:stretch;">
+            <div class="modal-header" style="background:transparent; border-bottom:none; padding:0; min-height:40px; display:flex; align-items:center; justify-content:flex-end;">
+                <button id="closeRouteModalBtn" class="modal-close" style="position:relative; top:0; right:0; font-size:1.8rem; background:none; border:none; color:#ccc; cursor:pointer; width:40px; height:40px;">×</button>
+            </div>
+            <div id="routeModalBody" class="modal-body" style="flex:1 1 auto; min-height:0; overflow-y:auto;">
                 <!-- ここに進路候補・登録済み進路リストが動的に描画されます -->
             </div>
         </div>
     </div>
 
     <!-- 競合進路確認モーダル -->
-    <div id="conflictModal" class="modal" style="display:none;z-index:3000;">
+    <div id="conflictModal" class="modal" style="z-index:3000;">
         <div class="modal-content" style="max-width:400px;text-align:center;">
             <h2 style="color:#F44336;">進路競合</h2>
             <div id="conflictModalBody" style="margin-bottom:20px;">
@@ -926,7 +934,7 @@
     </div>
 
     <!-- ポイント一覧モーダル -->
-    <div id="pointsModal" class="modal" style="display:none;z-index:3000;">
+    <div id="pointsModal" class="modal" style="z-index:3000;">
         <div class="modal-content" style="max-width:500px;max-height:80vh;overflow-y:auto;position:relative;">
             <button id="closePointsModalBtn" class="modal-buttons" style="position:absolute;top:8px;right:8px;font-size:20px;width:32px;height:32px;line-height:1;">×</button>
             <h2 style="margin-top:0;">ポイント一覧</h2>

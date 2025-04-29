@@ -420,7 +420,7 @@ class App {
         const closeRouteModalBtn = document.getElementById('closeRouteModalBtn');
         if (closeRouteModalBtn) {
             closeRouteModalBtn.addEventListener('click', () => {
-                document.getElementById('routeModal').style.display = 'none';
+                document.getElementById('routeModal').classList.remove('show');
             });
         }
 
