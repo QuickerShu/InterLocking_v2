@@ -1852,8 +1852,8 @@ class App {
             this.drawMode = 'cursor';
             this.canvas.setDrawMode('cursor');
             document.getElementById('cursorBtn').classList.add('active');
-            // ここでデフォルトのてこ・着点ボタンを自動追加
-            this.interlockingManager.ensureDefaultLeversAndButtons();
+            // ここでデフォルトのてこ・着点ボタンを自動追加（不要なので削除）
+            // this.interlockingManager.ensureDefaultLeversAndButtons();
         }
         
         // ステータス表示の更新
