@@ -930,6 +930,20 @@
         </div>
     </div>
 
+    <!-- 競合進路確認モーダル -->
+    <div id="conflictModal" class="modal" style="display:none;z-index:3000;">
+        <div class="modal-content" style="max-width:400px;text-align:center;">
+            <h2 style="color:#F44336;">進路競合</h2>
+            <div id="conflictModalBody" style="margin-bottom:20px;">
+                競合する進路が既に開通しています。<br>OKを押すと既存進路を解除して新しい進路を開通します。<br>キャンセルで中止します。
+            </div>
+            <div class="modal-buttons" style="justify-content:center;">
+                <button id="conflictOkBtn" class="control-btn" style="background:#2196F3;">OK</button>
+                <button id="conflictCancelBtn" class="control-btn" style="background:#888;">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScriptファイル -->
     <script src="src/js/config.js"></script>
     <script src="src/js/dsair.js"></script>

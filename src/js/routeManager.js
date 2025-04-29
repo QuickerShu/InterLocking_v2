@@ -513,19 +513,18 @@ class RouteManager {
 
     // 経路の競合をチェック
     checkRouteConflict(route1, route2) {
-        const route1Points = new Set(route1.points.map(p => p.id));
-        const route2Points = new Set(route2.points.map(p => p.id));
+        // 進路を構成する全ての線路IDを抽出
+        const getTrackIds = (route) => {
+            if (!route.points) return [];
+            return route.points.map(p => p.trackId || p.id).filter(id => id !== undefined && id !== null);
+        };
+        const route1Tracks = new Set(getTrackIds(route1));
+        const route2Tracks = new Set(getTrackIds(route2));
 
-        // 共通のポイントを探す
-        for (const pointId of route1Points) {
-            if (route2Points.has(pointId)) {
-                const point1 = route1.points.find(p => p.id === pointId);
-                const point2 = route2.points.find(p => p.id === pointId);
-                
-                // 同じポイントで異なる位置設定がある場合は競合
-                if (point1.position !== point2.position) {
-                    return true;
-                }
+        // 1本でも重複していれば競合
+        for (const trackId of route1Tracks) {
+            if (route2Tracks.has(trackId)) {
+                return true;
             }
         }
         return false;
@@ -1010,63 +1009,82 @@ class RouteManager {
 
     async activateRoute(routeId) {
         const route = this.routes.get(routeId);
-        if (route) {
-            if (route.isActive) {
-                route.deactivate();
-                this.activeRoutes.delete(route);
-            } else {
-                // 競合チェック
-                let canActivate = true;
-                this.activeRoutes.forEach(activeRoute => {
-                    if (this.checkRouteConflict(route, activeRoute)) {
-                        canActivate = false;
-                        alert('この進路は既存の進路と競合するため設定できません');
-                        return;
-                    }
-                });
+        if (!route) return;
 
-                if (canActivate) {
-                    route.activate();
-                    this.activeRoutes.add(route);
-                    // --- デバッグ出力 ---
-                    if (window.app && window.app.trackManager) {
-                        const tracks = window.app.trackManager.tracks;
-                        console.log('=== 進路開通デバッグ ===');
-                        console.log('routeId:', routeId, 'route:', route);
-                        if (route.points && Array.isArray(route.points)) {
-                            for (let idx = 0; idx < route.points.length; idx++) {
-                                const step = route.points[idx];
-                                let track = null;
-                                // trackId型対応
-                                if (typeof tracks.get === 'function') {
-                                    track = tracks.get(step.trackId) || tracks.get(String(step.trackId)) || tracks.get(Number(step.trackId));
-                                } else if (typeof tracks === 'object') {
-                                    track = tracks[step.trackId] || tracks[String(step.trackId)] || tracks[Number(step.trackId)];
-                                }
-                                console.log(`[${idx}] trackId:`, step.trackId || step.id, 
-                                    'type:', track?.type, 
-                                    'isPoint:', track?.isPoint, 
-                                    'step.direction:', step.direction, 
-                                    'pointStates:', route.pointStates?.[track?.id]);
-                                if (track) {
-                                    track.setStatus && track.setStatus('selected');
-                                    if (track.isPoint) {
-                                        // 分岐器stepのみdirectionを使う
-                                        const dir = step.direction || (route.pointStates && route.pointStates[track.id]) || 'normal';
-                                        if (track.setPointDirection) {
-                                            await track.setPointDirection(dir);
-                                            console.log('分岐器', track.id, 'setPointDirection:', dir);
-                                        }
-                                    }
-                                }
+        if (route.isActive) {
+            route.deactivate();
+            this.activeRoutes.delete(route);
+            this.updateRouteList();
+            return;
+        }
+
+        // 競合チェック
+        const conflicts = [];
+        this.activeRoutes.forEach(activeRoute => {
+            if (this.checkRouteConflict(route, activeRoute)) {
+                conflicts.push(activeRoute);
+            }
+        });
+
+        if (conflicts.length > 0) {
+            const ok = await this.showConflictModal(conflicts);
+            if (!ok) return;
+            // 競合進路を開放
+            conflicts.forEach(r => {
+                r.deactivate();
+                this.activeRoutes.delete(r);
+            });
+        }
+
+        // 進路構成中の全線路をROUTE色に
+        if (window.app && window.app.trackManager) {
+            const tracks = window.app.trackManager.tracks;
+            if (route.points && Array.isArray(route.points)) {
+                for (let idx = 0; idx < route.points.length; idx++) {
+                    const step = route.points[idx];
+                    let track = null;
+                    if (typeof tracks.get === 'function') {
+                        track = tracks.get(step.trackId) || tracks.get(String(step.trackId)) || tracks.get(Number(step.trackId));
+                    } else if (typeof tracks === 'object') {
+                        track = tracks[step.trackId] || tracks[String(step.trackId)] || tracks[Number(step.trackId)];
+                    }
+                    if (track) {
+                        track.setStatus && track.setStatus('ROUTE');
+                        if (track.isPoint) {
+                            const dir = step.direction || (route.pointStates && route.pointStates[track.id]) || 'normal';
+                            if (track.setPointDirection) {
+                                await track.setPointDirection(dir);
                             }
                         }
-                        if (window.app && window.app.canvas) window.app.canvas.draw();
                     }
                 }
             }
-            this.updateRouteList();
+            if (window.app && window.app.canvas) window.app.canvas.draw();
         }
+
+        route.activate();
+        this.activeRoutes.add(route);
+        this.updateRouteList();
+    }
+
+    showConflictModal(conflicts) {
+        return new Promise(resolve => {
+            const modal = document.getElementById('conflictModal');
+            const okBtn = document.getElementById('conflictOkBtn');
+            const cancelBtn = document.getElementById('conflictCancelBtn');
+            const body = document.getElementById('conflictModalBody');
+            if (body) {
+                body.innerHTML = `競合する進路が既に開通しています。<br>OKを押すと既存進路（${conflicts.map(r => r.name).join('、')}）を解除して新しい進路を開通します。<br>キャンセルで中止します。`;
+            }
+            modal.style.display = 'flex';
+            const cleanup = () => {
+                modal.style.display = 'none';
+                okBtn.onclick = null;
+                cancelBtn.onclick = null;
+            };
+            okBtn.onclick = () => { cleanup(); resolve(true); };
+            cancelBtn.onclick = () => { cleanup(); resolve(false); };
+        });
     }
 
     async saveRoutes() {
