@@ -1854,6 +1854,18 @@ class App {
             document.getElementById('cursorBtn').classList.add('active');
             // ここでデフォルトのてこ・着点ボタンを自動追加（不要なので削除）
             // this.interlockingManager.ensureDefaultLeversAndButtons();
+            // 選択対象をtrackに固定し、ラジオボタンもtrack側をcheckedにする
+            this.selectionTarget = 'track';
+            const selectTrackRadio = document.getElementById('selectTrackRadio');
+            const selectElementRadio = document.getElementById('selectElementRadio');
+            if (selectTrackRadio) selectTrackRadio.checked = true;
+            if (selectElementRadio) selectElementRadio.checked = false;
+            // 選択状態をリセット
+            this.canvas.selectedTrack = null;
+            this.canvas.selectedEndpoint = null;
+            this.interlockingManager.editModeState.selectedElement = null;
+            this.interlockingManager.editModeState.elementType = null;
+            this.canvas.draw();
         }
         
         // ステータス表示の更新
