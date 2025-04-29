@@ -524,7 +524,7 @@ class RouteManager {
         // 1本でも重複していれば競合
         for (const trackId of route1Tracks) {
             if (route2Tracks.has(trackId)) {
-                return true;
+                    return true;
             }
         }
         return false;
@@ -1013,18 +1013,18 @@ class RouteManager {
         const route = this.routes.get(routeId);
         if (!route) return;
 
-        if (route.isActive) {
-            route.deactivate();
-            this.activeRoutes.delete(route);
+            if (route.isActive) {
+                route.deactivate();
+                this.activeRoutes.delete(route);
             this.resetAllTracksStatus(); // 進路解除ボタンで全線路をnormalに
             this.updateRouteList();
             return;
         }
 
-        // 競合チェック
+                // 競合チェック
         const conflicts = [];
-        this.activeRoutes.forEach(activeRoute => {
-            if (this.checkRouteConflict(route, activeRoute)) {
+                this.activeRoutes.forEach(activeRoute => {
+                    if (this.checkRouteConflict(route, activeRoute)) {
                 conflicts.push(activeRoute);
             }
         });
@@ -1123,8 +1123,8 @@ class RouteManager {
 
         route.activate();
         this.activeRoutes.add(route);
-        this.updateRouteList();
-    }
+            this.updateRouteList();
+        }
 
     showConflictModal(conflicts) {
         return new Promise(resolve => {

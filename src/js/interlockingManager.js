@@ -258,8 +258,8 @@ class InterlockingManager {
                 }
             }
             // ドラッグ終了時に選択状態を必ず解除
-            this.editModeState.selectedElement = null;
-            this.editModeState.elementType = null;
+                    this.editModeState.selectedElement = null;
+                    this.editModeState.elementType = null;
             this.canvas.draw();
         } else {
             // ドラッグ中でなくても、マウスアップ時は必ずドラッグ状態を解除

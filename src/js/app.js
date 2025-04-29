@@ -67,6 +67,9 @@ class App {
         
         // 選択対象（'track' or 'element'）
         this.selectionTarget = 'track';
+
+        // 表示設定トグルボタンの状態を初期化
+        this.updateToggleButtonStates();
     }
 
     // ツールバーの設定
@@ -856,7 +859,6 @@ class App {
         const toggleEndpointsBtn = document.getElementById('toggleEndpointsBtn');
         const toggleConnectionsBtn = document.getElementById('toggleConnectionsBtn');
         const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
-        
         // 接続モード時は接続関連のボタンを強制的にアクティブにする
         if (this.drawMode === 'connect') {
             toggleEndpointsBtn.classList.add('active');
@@ -864,6 +866,7 @@ class App {
             toggleLabelsBtn.classList.add('active');
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
         } else {
+            // ON（表示中）ならactive、OFFなら非active
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
             toggleEndpointsBtn.classList.toggle('active', this.canvas.displayOptions.showEndpoints);
             toggleConnectionsBtn.classList.toggle('active', this.canvas.displayOptions.showConnections);
@@ -1827,6 +1830,22 @@ class App {
         
         // 編集ツールボタンの状態を更新
         this.updateEditToolButtons();
+        
+        // --- ここから表示設定の自動切替 ---
+        if (mode === 'operation') {
+            this.canvas.displayOptions.showGrid = false;
+            this.canvas.displayOptions.showEndpoints = false;
+            this.canvas.displayOptions.showConnections = false;
+            this.canvas.displayOptions.showConnectionLabels = false;
+        } else if (mode === 'edit') {
+            this.canvas.displayOptions.showGrid = true;
+            this.canvas.displayOptions.showEndpoints = true;
+            this.canvas.displayOptions.showConnections = true;
+            this.canvas.displayOptions.showConnectionLabels = true;
+        }
+        this.updateToggleButtonStates();
+        this.canvas.draw();
+        // --- ここまで追加 ---
         
         // 操作モードに切り替えるときはカーソルモードにリセット
         if (mode === 'operation') {
@@ -2906,7 +2925,6 @@ class App {
                         <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
                         <label for="invert-dcc">DCC出力を反転</label>
                     </div>
-                    <button id="point-prop-done" class="property-action-btn" style="margin-top:12px;">完了</button>
                 </div>
             `;
             // イベント設定
@@ -2927,12 +2945,6 @@ class App {
                     this.updatePointsList && this.updatePointsList();
                 });
             }
-            const doneBtn = document.getElementById('point-prop-done');
-            if (doneBtn) {
-                doneBtn.addEventListener('click', () => {
-                    propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
-                });
-            }
             return;
         }
         // 通常のプロパティ表示
@@ -2941,14 +2953,39 @@ class App {
         }
         if (!track) return;
         if (isPointLike) {
-            const doneBtn = document.createElement('button');
-            doneBtn.textContent = '完了';
-            doneBtn.className = 'property-action-btn';
-            doneBtn.style.marginTop = '12px';
-            doneBtn.addEventListener('click', () => {
-                propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
-            });
-            propertiesContainer.appendChild(doneBtn);
+            // DCCアドレス・反転設定UIを常に表示
+            propertiesContainer.innerHTML = `
+                <div class="property-group">
+                    <h3>${track.type === 'double_cross' ? 'ダブルクロス' : track.type === 'double_slip_x' ? 'ダブルスリップ' : 'ポイント'}設定</h3>
+                    <div class="input-group">
+                        <label for="point-address">DCCアドレス:</label>
+                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
+                    </div>
+                    <div class="checkbox-container">
+                        <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
+                        <label for="invert-dcc">DCC出力を反転</label>
+                    </div>
+                </div>
+            `;
+            // イベント設定
+            const addressInput = document.getElementById('point-address');
+            if (addressInput) {
+                addressInput.addEventListener('change', () => {
+                    const newAddress = parseInt(addressInput.value, 10);
+                    if (!isNaN(newAddress)) {
+                        track.dccAddress = newAddress;
+                        this.updatePointsList && this.updatePointsList();
+                    }
+                });
+            }
+            const invertDccCheckbox = document.getElementById('invert-dcc');
+            if (invertDccCheckbox) {
+                invertDccCheckbox.addEventListener('change', () => {
+                    track.invertDcc = invertDccCheckbox.checked;
+                    this.updatePointsList && this.updatePointsList();
+                });
+            }
+            return;
         }
     }
 
