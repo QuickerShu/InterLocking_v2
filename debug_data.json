@@ -1,21 +1,21 @@
 {
   "routes": [
     {
-      "id": "94e67bba-1bea-44b5-92b4-a7d5df3aeea4",
+      "id": "6794a768-2a5c-4ba1-8a8d-e96df126775a",
       "name": "signal 1",
       "lever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
+        "x": 220,
+        "y": 220
       },
       "destination": {
-        "id": "destButton_1745991103001_700",
+        "id": "destButton_1745991369054_354",
         "type": "destButton",
         "name": "着点ボタン1",
-        "x": 720,
-        "y": 120
+        "x": 860,
+        "y": 160
       },
       "points": [
         {
@@ -24,48 +24,40 @@
         },
         {
           "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
           "endpoint": 2,
           "direction": "reverse"
         },
         {
-          "trackId": 5,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 5,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 6,
+          "trackId": 4,
           "endpoint": 0
         }
       ],
       "isAuto": true
     },
     {
-      "id": "c1700c02-05fc-4c86-bf44-937ce2d548c2",
+      "id": "96d013cc-b635-4520-825b-878e9f781374",
       "name": "signal 2",
       "lever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
+        "x": 220,
+        "y": 220
       },
       "destination": {
-        "id": "destButton_1745991103001_700",
+        "id": "destButton_1745991369054_354",
         "type": "destButton",
         "name": "着点ボタン1",
-        "x": 720,
-        "y": 120
+        "x": 860,
+        "y": 160
       },
       "points": [
         {
@@ -74,47 +66,39 @@
         },
         {
           "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
           "endpoint": 2,
           "direction": "reverse"
         },
         {
-          "trackId": 5,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 5,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 6,
+          "trackId": 4,
           "endpoint": 0
         }
       ],
       "isAuto": true
     },
     {
-      "id": "7222c197-15cd-40ee-9b1a-75e41241af15",
+      "id": "fab4086b-854e-4919-a402-b56765759d9e",
       "name": "signal 3",
       "lever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
+        "x": 220,
+        "y": 220
       },
       "destination": {
-        "id": "destButton_1745991104748_633",
+        "id": "destButton_1745991371320_107",
         "type": "destButton",
         "name": "着点ボタン2",
-        "x": 720,
+        "x": 860,
         "y": 220
       },
       "points": [
@@ -131,35 +115,27 @@
           "endpoint": 1
         },
         {
-          "trackId": 3,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
-          "endpoint": 1
-        },
-        {
-          "trackId": 4,
+          "trackId": 5,
           "endpoint": 0
         }
       ],
       "isAuto": true
     },
     {
-      "id": "4f9aff0a-cfbc-42ff-96e9-e33818210993",
+      "id": "47913b27-570b-4c9f-8297-ba532bc21a6c",
       "name": "signal 4",
       "lever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
+        "x": 220,
+        "y": 220
       },
       "destination": {
-        "id": "destButton_1745991104748_633",
+        "id": "destButton_1745991371320_107",
         "type": "destButton",
         "name": "着点ボタン2",
-        "x": 720,
+        "x": 860,
         "y": 220
       },
       "points": [
@@ -176,15 +152,7 @@
           "endpoint": 1
         },
         {
-          "trackId": 3,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
-          "endpoint": 1
-        },
-        {
-          "trackId": 4,
+          "trackId": 5,
           "endpoint": 0
         }
       ],
@@ -194,115 +162,19 @@
   "routeCandidates": [
     {
       "startLever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
-      },
-      "destButton": {
-        "id": "destButton_1745991103001_700",
-        "type": "destButton",
-        "name": "着点ボタン1",
-        "x": 720,
-        "y": 120
-      },
-      "path": [
-        {
-          "trackId": 1,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 5,
-          "endpoint": 1
-        },
-        {
-          "trackId": 5,
-          "endpoint": 1
-        },
-        {
-          "trackId": 6,
-          "endpoint": 0
-        }
-      ],
-      "pointStates": {}
-    },
-    {
-      "startLever": {
-        "id": "signalLever_1745991100363_553",
-        "type": "signal",
-        "name": "信号てこ1",
-        "x": 180,
-        "y": 280
-      },
-      "destButton": {
-        "id": "destButton_1745991103001_700",
-        "type": "destButton",
-        "name": "着点ボタン1",
-        "x": 720,
-        "y": 120
-      },
-      "path": [
-        {
-          "trackId": 1,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 3,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 5,
-          "endpoint": 1
-        },
-        {
-          "trackId": 5,
-          "endpoint": 1
-        },
-        {
-          "trackId": 6,
-          "endpoint": 0
-        }
-      ],
-      "pointStates": {}
-    },
-    {
-      "startLever": {
-        "id": "signalLever_1745991100363_553",
-        "type": "signal",
-        "name": "信号てこ1",
-        "x": 180,
-        "y": 280
-      },
-      "destButton": {
-        "id": "destButton_1745991104748_633",
-        "type": "destButton",
-        "name": "着点ボタン2",
-        "x": 720,
+        "x": 220,
         "y": 220
       },
+      "destButton": {
+        "id": "destButton_1745991369054_354",
+        "type": "destButton",
+        "name": "着点ボタン1",
+        "x": 860,
+        "y": 160
+      },
       "path": [
         {
           "trackId": 1,
@@ -310,11 +182,8 @@
         },
         {
           "trackId": 2,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1
+          "endpoint": 2,
+          "direction": "reverse"
         },
         {
           "trackId": 3,
@@ -333,17 +202,57 @@
     },
     {
       "startLever": {
-        "id": "signalLever_1745991100363_553",
+        "id": "signalLever_1745991366057_720",
         "type": "signal",
         "name": "信号てこ1",
-        "x": 180,
-        "y": 280
+        "x": 220,
+        "y": 220
       },
       "destButton": {
-        "id": "destButton_1745991104748_633",
+        "id": "destButton_1745991369054_354",
+        "type": "destButton",
+        "name": "着点ボタン1",
+        "x": 860,
+        "y": 160
+      },
+      "path": [
+        {
+          "trackId": 1,
+          "endpoint": 1
+        },
+        {
+          "trackId": 2,
+          "endpoint": 2,
+          "direction": "reverse"
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 4,
+          "endpoint": 0
+        }
+      ],
+      "pointStates": {}
+    },
+    {
+      "startLever": {
+        "id": "signalLever_1745991366057_720",
+        "type": "signal",
+        "name": "信号てこ1",
+        "x": 220,
+        "y": 220
+      },
+      "destButton": {
+        "id": "destButton_1745991371320_107",
         "type": "destButton",
         "name": "着点ボタン2",
-        "x": 720,
+        "x": 860,
         "y": 220
       },
       "path": [
@@ -360,15 +269,42 @@
           "endpoint": 1
         },
         {
-          "trackId": 3,
+          "trackId": 5,
+          "endpoint": 0
+        }
+      ],
+      "pointStates": {}
+    },
+    {
+      "startLever": {
+        "id": "signalLever_1745991366057_720",
+        "type": "signal",
+        "name": "信号てこ1",
+        "x": 220,
+        "y": 220
+      },
+      "destButton": {
+        "id": "destButton_1745991371320_107",
+        "type": "destButton",
+        "name": "着点ボタン2",
+        "x": 860,
+        "y": 220
+      },
+      "path": [
+        {
+          "trackId": 1,
           "endpoint": 1
         },
         {
-          "trackId": 3,
+          "trackId": 2,
           "endpoint": 1
         },
         {
-          "trackId": 4,
+          "trackId": 2,
+          "endpoint": 1
+        },
+        {
+          "trackId": 5,
           "endpoint": 0
         }
       ],
@@ -382,11 +318,11 @@
       "name": "直線1",
       "endpoints": [
         {
-          "x": 120,
-          "y": 320
+          "x": 160,
+          "y": 220
         },
         {
-          "x": 300,
+          "x": 460,
           "y": 220
         }
       ],
@@ -395,158 +331,6 @@
           1,
           {
             "trackId": 2,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 2,
-      "type": "straight",
-      "name": "直線2",
-      "endpoints": [
-        {
-          "x": 300,
-          "y": 220
-        },
-        {
-          "x": 380,
-          "y": 220
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 1,
-            "endpointIndex": 1
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 3,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 3,
-      "type": "point_left",
-      "name": "左分岐3",
-      "endpoints": [
-        {
-          "x": 380,
-          "y": 220
-        },
-        {
-          "x": 460,
-          "y": 220
-        },
-        {
-          "x": 420,
-          "y": 200
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 2,
-            "endpointIndex": 1
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 4,
-            "endpointIndex": 0
-          }
-        ],
-        [
-          2,
-          {
-            "trackId": 5,
-            "endpointIndex": 0
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": true,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 4,
-      "type": "straight",
-      "name": "直線4",
-      "endpoints": [
-        {
-          "x": 460,
-          "y": 220
-        },
-        {
-          "x": 760,
-          "y": 220
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 3,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 5,
-      "type": "straight",
-      "name": "直線5",
-      "endpoints": [
-        {
-          "x": 420,
-          "y": 200
-        },
-        {
-          "x": 600,
-          "y": 120
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 3,
-            "endpointIndex": 2
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 6,
             "endpointIndex": 0
           }
         ]
@@ -559,24 +343,139 @@
       "visible": true
     },
     {
-      "id": 6,
-      "type": "straight",
-      "name": "直線6",
+      "id": 2,
+      "type": "point_left",
+      "name": "左分岐2",
       "endpoints": [
         {
-          "x": 600,
-          "y": 120
+          "x": 460,
+          "y": 220
         },
         {
-          "x": 780,
-          "y": 120
+          "x": 540,
+          "y": 220
+        },
+        {
+          "x": 500,
+          "y": 200
         }
       ],
       "connections": [
         [
           0,
           {
+            "trackId": 1,
+            "endpointIndex": 1
+          }
+        ],
+        [
+          2,
+          {
+            "trackId": 3,
+            "endpointIndex": 0
+          }
+        ],
+        [
+          1,
+          {
             "trackId": 5,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "normal",
+      "isPoint": true,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 3,
+      "type": "straight",
+      "name": "直線3",
+      "endpoints": [
+        {
+          "x": 500,
+          "y": 200
+        },
+        {
+          "x": 560,
+          "y": 160
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
+            "endpointIndex": 2
+          }
+        ],
+        [
+          1,
+          {
+            "trackId": 4,
+            "endpointIndex": 0
+          }
+        ]
+      ],
+      "status": "normal",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 4,
+      "type": "straight",
+      "name": "直線4",
+      "endpoints": [
+        {
+          "x": 560,
+          "y": 160
+        },
+        {
+          "x": 900,
+          "y": 160
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 3,
+            "endpointIndex": 1
+          }
+        ]
+      ],
+      "status": "normal",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 5,
+      "type": "straight",
+      "name": "直線5",
+      "endpoints": [
+        {
+          "x": 540,
+          "y": 220
+        },
+        {
+          "x": 900,
+          "y": 220
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
             "endpointIndex": 1
           }
         ]

@@ -1299,27 +1299,6 @@ class RouteManager {
             return results;
         }
 
-        // 着点ボタンの端点indexを特定（最も近い端点と遠い端点の両方を取得）
-        let destEpIdxNear = 0;
-        if (destButton.x !== undefined && destButton.y !== undefined && startTrack.trackManager) {
-            const destTrack = startTrack.trackManager.getTrack(destTrackId);
-            if (destTrack && Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
-                let minDist = Infinity;
-                destTrack.endpoints.forEach((ep, idx) => {
-                    const dx = ep.x - destButton.x;
-                    const dy = ep.y - destButton.y;
-                    const dist = dx * dx + dy * dy;
-                    if (dist < minDist) {
-                        minDist = dist;
-                        destEpIdxNear = idx;
-                    }
-                });
-            }
-        }
-
-        // 両方向の進路を探索するため、着点の両端点を使用
-        const destEndpoints = [destEpIdxNear, destEpIdxFar];
-
         // DFS本体
         const dfs = (track, epIdx, path, pointStates) => {
             // デバッグログ追加
@@ -1495,15 +1474,8 @@ class RouteManager {
             }
         };
 
-        // 両方向の進路を探索
-        destEndpoints.forEach(destEp => {
-            // 探索状態をリセット
-            visited.clear();
-            trackPassCount.clear();
-            
-            // 探索開始
-            dfs(startTrack, startEpIdx, [], {});
-        });
+        // 探索開始（着点の遠い方の端点のみを使用）
+        dfs(startTrack, startEpIdx, [], {});
 
         // 重複する進路を除外（同じ経路で方向が異なるものは残す）
         const uniqueResults = results.filter((route, index) => {
