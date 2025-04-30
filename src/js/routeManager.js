@@ -754,97 +754,91 @@ class RouteManager {
         // モーダル要素取得
         const modal = document.getElementById('routeModal');
         const modalBody = document.getElementById('routeModalBody');
-        // モーダル内容クリア
+        if (!modal || !modalBody) return;
+        
         modalBody.innerHTML = '';
-        // 候補リスト
-        const candidateHeader = document.createElement('div');
-        candidateHeader.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">進路自動生成候補</h3>';
-        modalBody.appendChild(candidateHeader);
+        this.candidateRoutes = candidates;
+
         candidates.forEach((route, idx) => {
             const routeElement = document.createElement('div');
-            routeElement.className = 'route-item candidate';
-            // 経路情報を整形
+            routeElement.className = 'route-item';
             let routeInfo = '';
+            
             if (route.points && route.points.length > 0) {
-            for (let i = 0; i < route.points.length - 1; i++) {
-                const curr = route.points[i];
-                const next = route.points[i + 1];
+                for (let i = 0; i < route.points.length - 1; i++) {
+                    const curr = route.points[i];
+                    const next = route.points[i + 1];
                     const currTrackId = curr.id ? curr.id.split(':')[0] : '';
                     const currEpIdx = curr.id ? curr.id.split(':')[1] : '';
                     const nextEpIdx = next.id ? next.id.split(':')[1] : '';
-                // track情報取得
-                let track = null;
-                if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
-                    const tracks = window.app.trackManager.tracks;
-                    if (Array.isArray(tracks)) {
-                        track = tracks.find(t => String(t.id) === currTrackId);
-                    } else if (typeof tracks.get === 'function') {
-                        track = tracks.get(currTrackId) || tracks.get(Number(currTrackId));
-                    } else if (typeof tracks === 'object') {
-                        track = tracks[currTrackId] || tracks[Number(currTrackId)];
-                    }
-                }
-                // 分岐器のいずれの端点から出入りする場合も方向を明示
-                let stepStr = `線路${currTrackId} 端点${currEpIdx}→${nextEpIdx}`;
-                if (track && track.isPoint) {
-                    // point_left, point_right, double_cross, double_slip_x で方向判定
-                    let showDirection = false;
-                    if (track.type === 'point_left' || track.type === 'point_right') {
-                        if ((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) {
-                            showDirection = true;
-                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
-                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                        } else if ((currEpIdx === '0' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '0')) {
-                            showDirection = true;
-                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
-                        }
-                    } else if (track.type === 'double_cross') {
-                        if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
-                            showDirection = true;
-                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
-                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                        } else if (((currEpIdx === '0' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '0')) || ((currEpIdx === '1' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '1'))) {
-                            showDirection = true;
-                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
-                        }
-                    } else if (track.type === 'double_slip_x') {
-                        if (((currEpIdx === '0' && nextEpIdx === '1') || (currEpIdx === '1' && nextEpIdx === '0')) || ((currEpIdx === '2' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '2'))) {
-                            showDirection = true;
-                            if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
-                            else if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                        } else if (((currEpIdx === '0' && nextEpIdx === '3') || (currEpIdx === '3' && nextEpIdx === '0')) || ((currEpIdx === '1' && nextEpIdx === '2') || (currEpIdx === '2' && nextEpIdx === '1'))) {
-                            showDirection = true;
-                            if (curr.position === 'reverse') stepStr += ' [分岐器: 分岐]';
-                            else if (curr.position === 'normal') stepStr += ' [分岐器: 直進]';
+                    
+                    // track情報取得
+                    let track = null;
+                    if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
+                        const tracks = window.app.trackManager.tracks;
+                        if (Array.isArray(tracks)) {
+                            track = tracks.find(t => String(t.id) === currTrackId);
+                        } else if (typeof tracks.get === 'function') {
+                            track = tracks.get(currTrackId) || tracks.get(Number(currTrackId));
+                        } else if (typeof tracks === 'object') {
+                            track = tracks[currTrackId] || tracks[Number(currTrackId)];
                         }
                     }
+
+                    // 分岐器のいずれの端点から出入りする場合も方向を明示
+                    let stepStr = `${track ? track.name || `線路${currTrackId}` : `線路${currTrackId}`}`;
+                    if (track && track.isPoint) {
+                        if (curr.position === 'normal') {
+                            stepStr += ' [直進]';
+                        } else if (curr.position === 'reverse') {
+                            stepStr += ' [分岐]';
+                        }
+                    }
+                    routeInfo += stepStr + ' → ';
                 }
-                routeInfo += stepStr + ' → ';
-            }
-            // 最後の端点
-            const last = route.points[route.points.length - 1];
+                
+                // 最後の端点
+                const last = route.points[route.points.length - 1];
                 if (last && last.id) {
-            const lastTrackId = last.id.split(':')[0];
-            const lastEpIdx = last.id.split(':')[1];
-            routeInfo += `線路${lastTrackId} 端点${lastEpIdx}`;
+                    const lastTrackId = last.id.split(':')[0];
+                    let lastTrack = null;
+                    if (window.app && window.app.trackManager) {
+                        lastTrack = window.app.trackManager.getTrack(lastTrackId);
+                    }
+                    routeInfo += lastTrack ? lastTrack.name || `線路${lastTrackId}` : `線路${lastTrackId}`;
                 }
             } else {
                 routeInfo = '経路情報がありません';
             }
+
             routeElement.innerHTML = `
-                <div class=\"route-header\">\n                    <span class=\"route-name\">${route.name}</span>\n                    <span class=\"route-generation-mode auto\">自動生成候補</span>\n                    <div class=\"route-actions\">\n                        <button class=\"route-action-btn\" onclick=\"routeManager.addRouteFromCandidate(${idx})\">追加</button>\n                    </div>\n                </div>\n                <div class=\"route-details\">\n                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>\n                    <div>着点: 着点ボタン ${route.destination.id}</div>\n                    <div class=\"route-points\">${routeInfo}</div>\n                    <div>コスト: ${route.cost}</div>\n                </div>\n            `;
+                <div class="route-header">
+                    <span class="route-name">${route.name}</span>
+                    <span class="route-generation-mode auto">自動生成候補</span>
+                    <div class="route-actions">
+                        <button class="route-action-btn" onclick="routeManager.addRouteFromCandidate(${idx})">追加</button>
+                    </div>
+                </div>
+                <div class="route-details">
+                    <div>テコ: ${this.getLeverTypeName(route.lever.type)} ${route.lever.name || route.lever.id}</div>
+                    <div>着点: ${route.destination.name || `着点ボタン ${route.destination.id}`}</div>
+                    <div class="route-points">${routeInfo}</div>
+                    <div>コスト: ${route.cost}</div>
+                </div>
+            `;
             modalBody.appendChild(routeElement);
         });
+
         // 区切り線
         const hr = document.createElement('hr');
         hr.style.margin = '16px 0 8px 0';
         modalBody.appendChild(hr);
+
         // 登録済み進路リスト
         const registeredHeader = document.createElement('div');
         registeredHeader.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">登録済み進路一覧</h3>';
         modalBody.appendChild(registeredHeader);
+
         if (this.routes.size === 0) {
             const emptyMsg = document.createElement('div');
             emptyMsg.textContent = '登録済み進路はありません';
@@ -854,49 +848,47 @@ class RouteManager {
             this.routes.forEach(route => {
                 const routeElement = document.createElement('div');
                 routeElement.className = 'route-item';
+                let pointDetails = '';
+                if (route.points && route.points.length > 0) {
+                    pointDetails = route.points.map(point => {
+                        let track = null;
+                        if (window.app && window.app.trackManager) {
+                            track = window.app.trackManager.getTrack(point.id || point.trackId);
+                        }
+                        let pointStr = track ? track.name || `線路${point.id || point.trackId}` : `線路${point.id || point.trackId}`;
+                        if (point.position) {
+                            pointStr += point.position === 'normal' ? ' [直進]' : ' [分岐]';
+                        }
+                        return pointStr;
+                    }).join(' → ');
+                }
+
                 routeElement.innerHTML = `
-                    <div class=\"route-header\">
-                        <span class=\"route-name\">${route.name}</span>
-                        <span class=\"route-generation-mode ${route.isAuto ? 'auto' : 'manual'}\">
+                    <div class="route-header">
+                        <span class="route-name">${route.name}</span>
+                        <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">
                             ${route.isAuto ? '自動生成' : '手動生成'}
                         </span>
-                        <div class=\"route-actions\">
-                            <button class=\"route-action-btn\" onclick=\"routeManager.activateRoute('${route.id}')\">
+                        <div class="route-actions">
+                            <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">
                                 ${route.isActive ? '解除' : '設定'}
                             </button>
-                            <button class=\"route-action-btn delete\" onclick=\"routeManager.removeRoute('${route.id}')\">
+                            <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">
                                 削除
                             </button>
                         </div>
                     </div>
-                    <div class=\"route-details\">
-                        <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
-                        <div>着点: 着点ボタン ${route.destination.id}</div>
-                        <div class=\"route-points\">
-                            ${route.points.map(p => `
-                                <div class=\"route-point\">
-                                    <span>ポイント: ${p.id}</span>
-                                    <span>位置: ${p.position === 'normal' ? '直進' : '分岐'}</span>
-                                </div>
-                            `).join('')}
-                        </div>
+                    <div class="route-details">
+                        <div>テコ: ${this.getLeverTypeName(route.lever.type)} ${route.lever.name || route.lever.id}</div>
+                        <div>着点: ${route.destination.name || `着点ボタン ${route.destination.id}`}</div>
+                        <div class="route-points">${pointDetails || '<span style="color:#888">分岐器はありません</span>'}</div>
                     </div>
                 `;
                 modalBody.appendChild(routeElement);
             });
         }
-        // モーダル表示
+
         modal.classList.add('show');
-        // 閉じるボタンイベント
-        const closeBtn = document.getElementById('closeRouteModalBtn');
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                modal.classList.remove('show');
-                this.exitAutoMode(); // モードを必ずオフにする
-            };
-        }
-        // 候補を一時保存
-        this.candidateRoutes = candidates;
     }
 
     // 進路候補から追加するメソッドを追加
@@ -965,44 +957,35 @@ class RouteManager {
         this.routes.forEach(route => {
             const routeElement = document.createElement('div');
             routeElement.className = 'route-item';
-            // 分岐器（ポイント）のみ抽出し詳細表示
-            const pointDetails = route.points
-                .map((p, idx) => {
-                    // trackId取得
-                    const trackId = p.trackId || p.id;
-                    // track取得
+            
+            let pointDetails = '';
+            if (route.points && route.points.length > 0) {
+                pointDetails = route.points.map(point => {
                     let track = null;
-                    if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
-                        const tracks = window.app.trackManager.tracks;
-                        if (typeof tracks.get === 'function') {
-                            track = tracks.get(trackId) || tracks.get(String(trackId)) || tracks.get(Number(trackId));
-                        } else if (typeof tracks === 'object') {
-                            track = tracks[trackId] || tracks[String(trackId)] || tracks[Number(trackId)];
-                        }
+                    if (window.app && window.app.trackManager) {
+                        track = window.app.trackManager.getTrack(point.id || point.trackId);
                     }
-                    if (track && track.isPoint) {
-                        const ep = p.endpoint !== undefined ? `端点: ${p.endpoint}` : '';
-                        const dir = p.direction !== undefined ? `方向: ${p.direction}` : '';
-                        const pos = p.position !== undefined ? `位置: ${p.position === 'normal' ? '直進' : p.position === 'reverse' ? '分岐' : p.position}` : '';
-                        return `<div class=\"route-point\"><span>分岐器: ${trackId}</span> <span>${ep}</span> <span>${dir}</span> <span>${pos}</span></div>`;
+                    let pointStr = track ? track.name || `線路${point.id || point.trackId}` : `線路${point.id || point.trackId}`;
+                    if (point.position) {
+                        pointStr += point.position === 'normal' ? ' [直進]' : ' [分岐]';
                     }
-                    return '';
-                })
-                .filter(html => html)
-                .join('');
+                    return pointStr;
+                }).join(' → ');
+            }
+
             routeElement.innerHTML = `
-                <div class=\"route-header\">
-                    <span class=\"route-name\">${route.name}</span>
-                    <span class=\"route-generation-mode ${route.isAuto ? 'auto' : 'manual'}\">${route.isAuto ? '自動生成' : '手動生成'}</span>
-                    <div class=\"route-actions\">
-                        <button class=\"route-action-btn\" onclick=\"routeManager.activateRoute('${route.id}')\">${route.isActive ? '解除' : '設定'}</button>
-                        <button class=\"route-action-btn delete\" onclick=\"routeManager.removeRoute('${route.id}')\">削除</button>
+                <div class="route-header">
+                    <span class="route-name">${route.name}</span>
+                    <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">${route.isAuto ? '自動生成' : '手動生成'}</span>
+                    <div class="route-actions">
+                        <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">${route.isActive ? '解除' : '設定'}</button>
+                        <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">削除</button>
                     </div>
                 </div>
-                <div class=\"route-details\">
-                    <div>テコ: ${this.getLeverTypeName(route.lever.type)}</div>
-                    <div>着点: 着点ボタン ${route.destination.id}</div>
-                    <div class=\"route-points\">${pointDetails || '<span style=\"color:#888\">分岐器はありません</span>'}</div>
+                <div class="route-details">
+                    <div>テコ: ${this.getLeverTypeName(route.lever.type)} ${route.lever.name || route.lever.id}</div>
+                    <div>着点: ${route.destination.name || `着点ボタン ${route.destination.id}`}</div>
+                    <div class="route-points">${pointDetails || '<span style="color:#888">分岐器はありません</span>'}</div>
                 </div>
             `;
             this.routeList.appendChild(routeElement);
