@@ -395,8 +395,7 @@ class App {
                 return;
             }
             // 新しい進路生成アルゴリズムの呼び出し
-            routeManager.generateAllRouteCandidates();
-            routeManager.showRouteCandidatesModal();
+            routeManager.generateAutoRoute();
         });
         
         // 選択対象ラジオボタンのイベント

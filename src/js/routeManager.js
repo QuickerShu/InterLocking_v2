@@ -7,7 +7,6 @@ class Route {
         this.points = points;         // [{id: string, position: 'normal' | 'reverse'}]
         this.isAuto = isAuto;
         this.isActive = false;
-        this.cost = 0;
     }
 
     activate() {
@@ -47,36 +46,6 @@ class Route {
         );
         route.id = json.id;
         return route;
-    }
-
-    // 経路のコストを計算
-    calculateCost() {
-        let totalCost = 0;
-        let consecutiveReverse = 0; // 連続する分岐数
-
-        this.points.forEach((point, index) => {
-            // 基本コスト
-            if (point.position === 'reverse') {
-                totalCost += 1.5; // 分岐の基本コスト
-                consecutiveReverse++;
-                // 連続する分岐にペナルティを追加
-                totalCost += consecutiveReverse * 0.5;
-            } else {
-                totalCost += 1.0; // 直進の基本コスト
-                consecutiveReverse = 0;
-            }
-
-            // 方向変更のペナルティ
-            if (index > 0) {
-                const prevPosition = this.points[index - 1].position;
-                if (prevPosition !== point.position) {
-                    totalCost += 0.5; // 方向変更のペナルティ
-                }
-            }
-        });
-
-        this.cost = totalCost;
-        return totalCost;
     }
 }
 
@@ -225,7 +194,6 @@ class RouteManager {
                     let conns = track.connections;
                     if (!Array.isArray(conns)) {
                         if (conns && typeof conns.forEach === 'function') {
-                            // Mapの場合
                             conns = Array.from(conns);
                         } else {
                             return [];
@@ -251,39 +219,31 @@ class RouteManager {
                 }
                 // デバッグ出力
                 console.log('leverConnected:', leverConnected, 'destConnected:', destConnected);
-                let bestPath = [];
-                let minLen = Infinity;
-                let bestLeverEpIdx = null;
-                let bestDestEpIdx = null;
                 leverEpIdxs.forEach(leverEpIdx => {
                     destEpIdxs.forEach(destEpIdx => {
-                        const path = this.findOptimalRoute(lever.trackId, dest.trackId);
-                        if (path.length > 0 && path.length < minLen) {
-                            bestPath = path;
-                            minLen = path.length;
-                            bestLeverEpIdx = leverEpIdx;
-                            bestDestEpIdx = destEpIdx;
-                        }
+                        // DFSで候補を生成
+                        const candidates = this._findAllRoutesFromEndpoint(leverTrack, leverEpIdx, dest, destEpIdx);
+                        candidates.forEach(c => {
+                            const route = new Route(
+                                `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
+                                lever,
+                                dest,
+                                c.path,
+                                true
+                            );
+                            if (this.validateRoute(route)) {
+                                // 重複チェック（同じpoints配列のものは除外）
+                                if (!allCandidates.some(r => JSON.stringify(r.points) === JSON.stringify(route.points))) {
+                                    allCandidates.push(route);
+                                }
+                            }
+                        });
                     });
                 });
-                console.log(`lever.id=${lever.id}, lever.trackId=${lever.trackId}, leverEpIdxs=${leverEpIdxs}, dest.id=${dest.id}, dest.trackId=${dest.trackId}, destEpIdxs=${destEpIdxs}, bestLeverEpIdx=${bestLeverEpIdx}, bestDestEpIdx=${bestDestEpIdx}`);
-                if (bestPath.length > 0) {
-                    const route = new Route(
-                        `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
-                        lever,
-                        dest,
-                        bestPath,
-                        true
-                    );
-                    route.calculateCost();
-                    if (this.validateRoute(route)) {
-                        allCandidates.push(route);
-                    }
-                }
             }
         });
         console.log('allCandidates.length:', allCandidates.length);
-        this.showRouteCandidates(allCandidates);
+        this.showRouteCandidatesInPanel(allCandidates);
     }
 
     exitAutoMode() {
@@ -541,376 +501,177 @@ class RouteManager {
         return true;
     }
 
-    // 複数の経路候補を生成
-    generateRouteCandidates(startId, endId) {
-        const candidates = [];
-        
-        // 基本の最短経路を探索
-        const baseRoute = this.findOptimalRoute(startId, endId, new Map());
-        if (baseRoute.length > 0) {
-            candidates.push(baseRoute);
-        }
-
-        // 代替経路の探索
-        for (let i = 0; i < this.maxCandidates - 1; i++) {
-            const excludedPoints = new Map();
-            
-            // 既存の経路で使用されているポイントにペナルティを設定
-            candidates.forEach(route => {
-                route.forEach(point => {
-                    excludedPoints.set(point.id, (excludedPoints.get(point.id) || 0) + 2.0);
-                });
+    async generateAutoRoute() {
+        try {
+            // すべてのてこ・着点ボタンの組み合わせで候補生成
+            const levers = (this.interlockingManager.startLevers || []).map(l => ({
+                id: l.id,
+                type: l.type,
+                trackId: l.trackId !== undefined && l.trackId !== null ? String(l.trackId) : '',
+                x: l.x,
+                y: l.y
+            }));
+            const destButtons = (this.interlockingManager.destinationButtons || []).map(b => ({
+                id: b.id,
+                trackId: b.trackId !== undefined && b.trackId !== null ? String(b.trackId) : '',
+                x: b.x,
+                y: b.y
+            }));
+            const tracks = window.app.trackManager.tracks;
+            const trackElements = Array.isArray(tracks)
+                ? tracks
+                : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
+            const trackElementsForGraph = trackElements.map(track => {
+                let normalConnection = null;
+                let reverseConnection = null;
+                let connectionsArr = Array.isArray(track.connections) ? track.connections : Array.from(track.connections);
+                if (Array.isArray(connectionsArr)) {
+                    connectionsArr.forEach(([endpointIndex, conn]) => {
+                        if (endpointIndex === 0) normalConnection = conn;
+                        if (endpointIndex === 1) reverseConnection = conn;
+                    });
+                }
+                return {
+                    id: String(track.id),
+                    type: track.type,
+                    endpoints: track.endpoints,
+                    connections: connectionsArr,
+                    normalConnection,
+                    reverseConnection
+                };
             });
-
-            // 新しい経路を探索
-            const alternativeRoute = this.findOptimalRoute(startId, endId, excludedPoints);
-            if (alternativeRoute.length > 0 && 
-                !this.isRouteDuplicate(alternativeRoute, candidates)) {
-                candidates.push(alternativeRoute);
+            this.buildTrackGraph(trackElementsForGraph);
+            // 端点indexを求める関数
+            function getEndpointIndexByConnection(track, targetTrackId) {
+                if (!track.connections) return null;
+                for (const [fromIdx, conn] of track.connections) {
+                    if (conn.trackId == targetTrackId) return fromIdx;
+                }
+                return null;
             }
-        }
-
-        return candidates;
-    }
-
-    // 経路が重複していないかチェック
-    isRouteDuplicate(newRoute, existingRoutes) {
-        const newRouteStr = JSON.stringify(newRoute.map(p => p.id));
-        return existingRoutes.some(route => 
-            JSON.stringify(route.map(p => p.id)) === newRouteStr
-        );
-    }
-
-    // 最適経路探索（端点ノードグラフ対応）
-    findOptimalRoute(startTrackId, endTrackId, additionalCosts = new Map()) {
-        // デバッグ出力を追加
-        console.log('findOptimalRoute called:', startTrackId, endTrackId, 'trackGraph keys:', Array.from(this.trackGraph.keys()));
-        const startNodeIds = [
-            `${startTrackId}:0`,
-            `${startTrackId}:1`
-        ].filter(id => this.trackGraph.has(id));
-        const endNodeIds = [
-            `${endTrackId}:0`,
-            `${endTrackId}:1`
-        ].filter(id => this.trackGraph.has(id));
-        console.log('startNodeIds:', startNodeIds, 'endNodeIds:', endNodeIds);
-        if (startNodeIds.length === 0 || endNodeIds.length === 0) {
-            return [];
-        }
-
-        // 2. 全ての始点-終点ペアで最短経路を探索し、最も短いものを採用
-        let bestPath = [];
-        let minCost = Infinity;
-        for (const sId of startNodeIds) {
-            for (const eId of endNodeIds) {
-                const path = this._findOptimalPathBetweenNodes(sId, eId, additionalCosts);
-                if (path.length > 0 && path.length < minCost) {
-                    bestPath = path;
-                    minCost = path.length;
-                }
+            function getNearestEndpointIndex(track, x, y) {
+                if (!track.endpoints || track.endpoints.length < 2) return 0;
+                const d0 = Math.hypot(track.endpoints[0].x - x, track.endpoints[0].y - y);
+                const d1 = Math.hypot(track.endpoints[1].x - x, track.endpoints[1].y - y);
+                return d0 < d1 ? 0 : 1;
             }
-        }
-        return bestPath;
-    }
-
-    // 端点ノード間の最短経路探索（Dijkstra/BFS）
-    _findOptimalPathBetweenNodes(startId, endId, additionalCosts = new Map()) {
-        // 追加: ノードIDとグラフのキーを出力
-        console.log('startId:', startId, 'endId:', endId, 'trackGraph keys:', Array.from(this.trackGraph.keys()));
-        if (!this.trackGraph.has(startId) || !this.trackGraph.has(endId)) {
-            return [];
-        }
-        const distances = new Map();
-        const previous = new Map();
-        const unvisited = new Set();
-
-        // 初期化
-        this.trackGraph.forEach((node, id) => {
-            distances.set(id, id === startId ? 0 : Infinity);
-            previous.set(id, null);
-            unvisited.add(id);
-        });
-
-        let step = 0;
-        while (unvisited.size > 0) {
-            let currentId = null;
-            let minDistance = Infinity;
-            unvisited.forEach(id => {
-                const distance = distances.get(id);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    currentId = id;
-                }
-            });
-            if (currentId === null || currentId === endId) break;
-            unvisited.delete(currentId);
-            const currentNode = this.trackGraph.get(currentId);
-            // デバッグ出力
-            console.log(`[step ${step}] currentId=${currentId}, distance=${distances.get(currentId)}`);
-            currentNode.connections.forEach((connection, neighborId) => {
-                if (!unvisited.has(neighborId)) return;
-                let connectionCost = connection.cost;
-                if (additionalCosts.has(neighborId)) {
-                    connectionCost += additionalCosts.get(neighborId);
-                }
-                const newDistance = distances.get(currentId) + connectionCost;
-                // デバッグ出力
-                console.log(`  neighborId=${neighborId}, oldDist=${distances.get(neighborId)}, newDist=${newDistance}`);
-                if (newDistance < distances.get(neighborId)) {
-                    distances.set(neighborId, newDistance);
-                    previous.set(neighborId, {
-                        id: currentId,
-                        position: connection.position
+            let allCandidates = [];
+            levers.forEach(lever => {
+                const leverTrack = trackElementsForGraph.find(t => t.id == lever.trackId);
+                if (!leverTrack) return;
+                for (const dest of destButtons) {
+                    const destTrack = trackElementsForGraph.find(t => t.id == dest.trackId);
+                    if (!destTrack) continue;
+                    function getConnectedEndpointIndices(track) {
+                        let conns = track.connections;
+                        if (!Array.isArray(conns)) {
+                            if (conns && typeof conns.forEach === 'function') {
+                                conns = Array.from(conns);
+                            } else {
+                                return [];
+                            }
+                        }
+                        return [...new Set(conns.map(([idx, _]) => idx))];
+                    }
+                    // lever
+                    const leverConnected = getConnectedEndpointIndices(leverTrack);
+                    let leverEpIdxs;
+                    if (leverConnected.length > 0) {
+                        leverEpIdxs = leverConnected;
+                    } else {
+                        leverEpIdxs = [getNearestEndpointIndex(leverTrack, lever.x, lever.y)];
+                    }
+                    // dest
+                    const destConnected = getConnectedEndpointIndices(destTrack);
+                    let destEpIdxs;
+                    if (destConnected.length > 0) {
+                        destEpIdxs = destConnected;
+                    } else {
+                        destEpIdxs = [getNearestEndpointIndex(destTrack, dest.x, dest.y)];
+                    }
+                    leverEpIdxs.forEach(leverEpIdx => {
+                        destEpIdxs.forEach(destEpIdx => {
+                            const candidates = this._findAllRoutesFromEndpoint(leverTrack, leverEpIdx, dest, destEpIdx);
+                            candidates.forEach(c => {
+                                const route = new Route(
+                                    `${this.getLeverTypeName(lever.type)} ${this.routes.size + 1}`,
+                                    lever,
+                                    dest,
+                                    c.path,
+                                    true
+                                );
+                                if (this.validateRoute(route)) {
+                                    if (!allCandidates.some(r => JSON.stringify(r.points) === JSON.stringify(route.points))) {
+                                        allCandidates.push(route);
+                                    }
+                                }
+                            });
+                        });
                     });
                 }
             });
-            step++;
-        }
-        // デバッグ: 最終的なdistances, previous
-        console.log('final distances:', distances);
-        console.log('final previous:', previous);
-
-        // 経路の再構築
-        const path = [];
-        let current = endId;
-        let prev = previous.get(current);
-        while (prev) {
-            // prev.id から current へのエッジのpositionを取得
-            let position = 'track';
-            const prevNode = this.trackGraph.get(prev.id);
-            if (prevNode && prevNode.connections.has(current)) {
-                position = prevNode.connections.get(current).position;
-            }
-            path.unshift({
-                id: prev.id,
-                nextId: current,
-                position: position
-            });
-            current = prev.id;
-            prev = previous.get(current);
-        }
-        // 最後のノード（始点）
-        if (path.length > 0 && path[0].id !== startId) {
-            // 始点が含まれていない場合は無効
-            return [];
-        }
-        // 終点を追加
-        path.push({ id: endId, nextId: null, position: 'track' });
-        return path;
-    }
-
-    async generateAutoRoute() {
-        try {
-            const trackElements = Array.from(document.querySelectorAll('[data-track-element]'))
-                .map(el => ({
-                    id: el.dataset.trackId,
-                    type: el.dataset.trackType,
-                    normalConnection: el.dataset.normalConnection ? 
-                        { id: el.dataset.normalConnection } : null,
-                    reverseConnection: el.dataset.reverseConnection ?
-                        { id: el.dataset.reverseConnection } : null
-                }));
-
-            this.buildTrackGraph(trackElements);
-
-            // テコと着点ボタン間の経路を探索
-            const candidates = this.generateRouteCandidates(
-                this.selectedLever.id, 
-                this.selectedDestination.id
-            );
-
-            // 進路候補リストを生成
-            if (candidates.length > 0) {
-                const validCandidates = candidates
-                    .map(points => {
-                        const route = new Route(
-                            `${this.getLeverTypeName(this.selectedLever.type)} 候補${this.routes.size + 1}`,
-                            this.selectedLever,
-                            this.selectedDestination,
-                            points,
-                            true
-                        );
-                        route.calculateCost();
-                        return route;
-                    })
-                    .filter(route => this.validateRoute(route))
-                    .sort((a, b) => a.cost - b.cost);
-
-                // 進路候補リストを画面に表示
-                this.showRouteCandidates(validCandidates);
-            } else {
-                throw new Error('有効な進路が見つかりません');
-            }
+            this.showRouteCandidatesInPanel(allCandidates);
         } catch (error) {
             console.error('進路生成エラー:', error);
             alert(`進路生成エラー: ${error.message}`);
-        } finally {
-            this.exitAutoMode();
         }
     }
 
-    // 進路候補リストを画面に表示するメソッドを追加
-    showRouteCandidates(candidates) {
-        // モーダル要素取得
-        const modal = document.getElementById('routeModal');
-        const modalBody = document.getElementById('routeModalBody');
-        if (!modal || !modalBody) return;
-        
-        modalBody.innerHTML = '';
-        this.candidateRoutes = candidates;
-
-        candidates.forEach((route, idx) => {
-            const routeElement = document.createElement('div');
-            routeElement.className = 'route-item';
-            let routeInfo = '';
-            
-            if (route.points && route.points.length > 0) {
-                for (let i = 0; i < route.points.length - 1; i++) {
-                    const curr = route.points[i];
-                    const next = route.points[i + 1];
-                    const currTrackId = curr.id ? curr.id.split(':')[0] : '';
-                    const currEpIdx = curr.id ? curr.id.split(':')[1] : '';
-                    const nextEpIdx = next.id ? next.id.split(':')[1] : '';
-                    
-                    // track情報取得
-                    let track = null;
-                    if (window.app && window.app.trackManager && window.app.trackManager.tracks) {
-                        const tracks = window.app.trackManager.tracks;
-                        if (Array.isArray(tracks)) {
-                            track = tracks.find(t => String(t.id) === currTrackId);
-                        } else if (typeof tracks.get === 'function') {
-                            track = tracks.get(currTrackId) || tracks.get(Number(currTrackId));
-                        } else if (typeof tracks === 'object') {
-                            track = tracks[currTrackId] || tracks[Number(currTrackId)];
-                        }
-                    }
-
-                    // 分岐器のいずれの端点から出入りする場合も方向を明示
-                    let stepStr = `${track ? track.name || `線路${currTrackId}` : `線路${currTrackId}`}`;
-                    if (track && track.isPoint) {
-                        if (curr.position === 'normal') {
-                            stepStr += ' [直進]';
-                        } else if (curr.position === 'reverse') {
-                            stepStr += ' [分岐]';
-                        }
-                    }
-                    routeInfo += stepStr + ' → ';
-                }
-                
-                // 最後の端点
-                const last = route.points[route.points.length - 1];
-                if (last && last.id) {
-                    const lastTrackId = last.id.split(':')[0];
-                    let lastTrack = null;
-                    if (window.app && window.app.trackManager) {
-                        lastTrack = window.app.trackManager.getTrack(lastTrackId);
-                    }
-                    routeInfo += lastTrack ? lastTrack.name || `線路${lastTrackId}` : `線路${lastTrackId}`;
-                }
-            } else {
-                routeInfo = '経路情報がありません';
+    // プロパティパネルに進路候補を表示し、一括登録ボタンを設置
+    showRouteCandidatesInPanel(candidates) {
+        const panel = document.getElementById('selected-properties');
+        if (!panel) return;
+        // 内部状態として候補リストを保持
+        this._routeCandidatesPanelList = candidates.slice();
+        const render = () => {
+            panel.innerHTML = '';
+            const candidates = this._routeCandidatesPanelList;
+            if (!candidates || candidates.length === 0) {
+                panel.innerHTML = '<p>進路候補がありません</p>';
+                return;
             }
-
-            routeElement.innerHTML = `
-                <div class="route-header">
-                    <span class="route-name">${route.name}</span>
-                    <span class="route-generation-mode auto">自動生成候補</span>
-                    <div class="route-actions">
-                        <button class="route-action-btn" onclick="routeManager.addRouteFromCandidate(${idx})">追加</button>
-                    </div>
-                </div>
-                <div class="route-details">
-                    <div>テコ: ${this.getLeverTypeName(route.lever.type)} ${route.lever.name || route.lever.id}</div>
-                    <div>着点: ${route.destination.name || `着点ボタン ${route.destination.id}`}</div>
-                    <div class="route-points">${routeInfo}</div>
-                    <div>コスト: ${route.cost}</div>
-                </div>
-            `;
-            modalBody.appendChild(routeElement);
-        });
-
-        // 区切り線
-        const hr = document.createElement('hr');
-        hr.style.margin = '16px 0 8px 0';
-        modalBody.appendChild(hr);
-
-        // 登録済み進路リスト
-        const registeredHeader = document.createElement('div');
-        registeredHeader.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">登録済み進路一覧</h3>';
-        modalBody.appendChild(registeredHeader);
-
-        if (this.routes.size === 0) {
-            const emptyMsg = document.createElement('div');
-            emptyMsg.textContent = '登録済み進路はありません';
-            emptyMsg.style.color = '#888';
-            modalBody.appendChild(emptyMsg);
-        } else {
-            this.routes.forEach(route => {
-                const routeElement = document.createElement('div');
-                routeElement.className = 'route-item';
-                let pointDetails = '';
-                if (route.points && route.points.length > 0) {
-                    pointDetails = route.points.map(point => {
-                        let track = null;
-                        if (window.app && window.app.trackManager) {
-                            track = window.app.trackManager.getTrack(point.id || point.trackId);
-                        }
-                        let pointStr = track ? track.name || `線路${point.id || point.trackId}` : `線路${point.id || point.trackId}`;
-                        if (point.position) {
-                            pointStr += point.position === 'normal' ? ' [直進]' : ' [分岐]';
-                        }
-                        return pointStr;
-                    }).join(' → ');
-                }
-
-                routeElement.innerHTML = `
-                    <div class="route-header">
-                        <span class="route-name">${route.name}</span>
-                        <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">
-                            ${route.isAuto ? '自動生成' : '手動生成'}
-                        </span>
-                        <div class="route-actions">
-                            <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">
-                                ${route.isActive ? '解除' : '設定'}
-                            </button>
-                            <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">
-                                削除
-                            </button>
-                        </div>
-                    </div>
-                    <div class="route-details">
-                        <div>テコ: ${this.getLeverTypeName(route.lever.type)} ${route.lever.name || route.lever.id}</div>
-                        <div>着点: ${route.destination.name || `着点ボタン ${route.destination.id}`}</div>
-                        <div class="route-points">${pointDetails || '<span style="color:#888">分岐器はありません</span>'}</div>
-                    </div>
-                `;
-                modalBody.appendChild(routeElement);
+            // 登録ボタン
+            const registerBtn = document.createElement('button');
+            registerBtn.textContent = '登録';
+            registerBtn.style.margin = '8px 0 16px 0';
+            registerBtn.className = 'route-register-btn';
+            registerBtn.onclick = () => {
+                candidates.forEach(route => {
+                    this.addRoute(route);
+                });
+                this.updateRouteList();
+                panel.innerHTML = '<p>進路候補を登録しました。</p>';
+                // 自動生成モードをオフ
+                this.exitAutoMode();
+                // modeIndicatorを非表示
+                const modeIndicator = document.getElementById('modeIndicator');
+                if (modeIndicator) modeIndicator.style.display = 'none';
+            };
+            panel.appendChild(registerBtn);
+            // 候補リスト
+            const header = document.createElement('div');
+            header.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">進路候補リスト</h3>';
+            panel.appendChild(header);
+            candidates.forEach((route, idx) => {
+                const routeDiv = document.createElement('div');
+                routeDiv.className = 'route-item candidate';
+                let html = `<div><b>てこ:</b> ${route.lever.name || route.lever.id}　<b>着点:</b> ${route.destination.name || route.destination.id}`;
+                html += ` <button style="margin-left:8px;" class="delete-candidate-btn">削除</button></div>`;
+                html += '<ul style="margin-left:1em;">';
+                (route.points || []).forEach(step => {
+                    html += `<li>線路ID: ${step.trackId ?? step.id}, 端点: ${step.endpoint ?? ''}, 開通方向: ${step.direction ?? ''}</li>`;
+                });
+                html += '</ul>';
+                routeDiv.innerHTML = html;
+                // 削除ボタンのイベント
+                routeDiv.querySelector('.delete-candidate-btn').onclick = () => {
+                    this._routeCandidatesPanelList.splice(idx, 1);
+                    render();
+                };
+                panel.appendChild(routeDiv);
             });
-        }
-
-        modal.classList.add('show');
-    }
-
-    // 進路候補から追加するメソッドを追加
-    addRouteFromCandidate(idx) {
-        if (this.candidateRoutes && this.candidateRoutes[idx]) {
-            const route = this.candidateRoutes[idx];
-            this.addRoute(route);
-            this.updateRouteList();
-            delete this.candidateRoutes; // 候補リストを消す
-
-            // --- 追加: モーダルを閉じる ---
-            const modal = document.getElementById('routeModal');
-            if (modal) modal.classList.remove('show');
-
-            // --- 追加: 自動生成ボタンのアクティブ解除 ---
-            const autoBtn = document.getElementById('autoRouteBtn');
-            if (autoBtn) autoBtn.classList.remove('active');
-
-            // --- 追加: 自動生成モードのポップアップを非表示 ---
-            const modeIndicator = document.getElementById('modeIndicator');
-            if (modeIndicator) modeIndicator.style.display = 'none';
-        }
+        };
+        render();
     }
 
     finalizeManualRoute() {
@@ -988,10 +749,16 @@ class RouteManager {
             routeElement.innerHTML = `
                 <div class="route-header">
                     <span class="route-name">${route.name}</span>
-                    <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">${route.isAuto ? '自動生成' : '手動生成'}</span>
+                    <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">
+                        ${route.isAuto ? '自動生成' : '手動生成'}
+                    </span>
                     <div class="route-actions">
-                        <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">${route.isActive ? '解除' : '設定'}</button>
-                        <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">削除</button>
+                        <button class="route-action-btn" onclick="routeManager.activateRoute('${route.id}')">
+                            ${route.isActive ? '解除' : '設定'}
+                        </button>
+                        <button class="route-action-btn delete" onclick="routeManager.removeRoute('${route.id}')">
+                            削除
+                        </button>
                     </div>
                 </div>
                 <div class="route-details">
@@ -1186,95 +953,6 @@ class RouteManager {
             this.modeIndicator.classList.add('active', mode);
             this.modeText.textContent = mode === 'auto' ? '自動生成モード' : '手動生成モード';
         }
-    }
-
-    // 進路自動生成・候補生成・経路探索・UI表示などの既存メソッドを全て削除
-    // 新しい進路生成アルゴリズム実装のための空メソッドを用意
-    generateAllRouteCandidates() {
-        // 進路候補テーブルを初期化
-        this.routeCandidates = [];
-        const startLevers = this.interlockingManager.startLevers || [];
-        const destButtons = this.interlockingManager.destinationButtons || [];
-        if (!startLevers.length || !destButtons.length) {
-            // UI側でエラー表示すること
-            return;
-        }
-
-        // てこ×着点ボタンの全組み合わせ
-        for (const lever of startLevers) {
-            // てこに関連付けられた線路を取得
-            const leverTrack = this.interlockingManager.trackManager.getTrack(lever.trackId);
-            if (!leverTrack) continue;
-
-            for (const button of destButtons) {
-                // 同じ線路上のてこと着点ボタンはスキップ
-                if (lever.trackId === button.trackId) continue;
-
-                // 着点に関連付けられた線路を取得
-                const destTrack = this.interlockingManager.trackManager.getTrack(button.trackId);
-                if (!destTrack) continue;
-
-                // てこ側の端点を取得（てこから遠い方を使用）
-                let leverEpIdxFar = 0;
-                if (Array.isArray(leverTrack.endpoints) && leverTrack.endpoints.length >= 2) {
-                    let maxDist = -Infinity;
-                    leverTrack.endpoints.forEach((ep, idx) => {
-                        const dx = ep.x - lever.x;
-                        const dy = ep.y - lever.y;
-                        const dist = dx * dx + dy * dy;
-                        if (dist > maxDist) {
-                            maxDist = dist;
-                            leverEpIdxFar = idx;
-                        }
-                    });
-                }
-
-                // 着点側の端点を取得（着点から遠い方を使用）
-                let destEpIdxFar = 0;
-                if (Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
-                    let maxDist = -Infinity;
-                    destTrack.endpoints.forEach((ep, idx) => {
-                        const dx = ep.x - button.x;
-                        const dy = ep.y - button.y;
-                        const dist = dx * dx + dy * dy;
-                        if (dist > maxDist) {
-                            maxDist = dist;
-                            destEpIdxFar = idx;
-                        }
-                    });
-                }
-
-                // 進路探索を実行
-                const routes = this._findAllRoutesFromEndpoint(leverTrack, leverEpIdxFar, button, destEpIdxFar);
-                console.log(`探索結果: てこ${lever.id}(線路${lever.trackId}) → ボタン${button.id}(線路${button.trackId}), 経路数: ${routes.length}`);
-
-                // 見つかった経路を候補に追加
-                for (const route of routes) {
-                    this.routeCandidates.push({
-                        startLever: lever,
-                        destButton: button,
-                        path: route.path,
-                        pointStates: route.pointStates
-                    });
-                }
-            }
-        }
-
-        console.log('生成された進路候補:', this.routeCandidates);
-
-        // routeCandidatesをroutesへ登録
-        this.routeCandidates.forEach((candidate, index) => {
-            const route = new Route(
-                `${this.getLeverTypeName(candidate.startLever.type)} ${this.routes.size + 1}`,
-                candidate.startLever,
-                candidate.destButton,
-                candidate.path,
-                true
-            );
-            route.calculateCost();
-            this.addRoute(route);
-        });
-        this.updateRouteList();
     }
 
     // 経路探索本体（DFS、分岐器等は全方向考慮）
