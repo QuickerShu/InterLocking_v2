@@ -898,6 +898,18 @@ class RouteManager {
             this.addRoute(route);
             this.updateRouteList();
             delete this.candidateRoutes; // 候補リストを消す
+
+            // --- 追加: モーダルを閉じる ---
+            const modal = document.getElementById('routeModal');
+            if (modal) modal.classList.remove('show');
+
+            // --- 追加: 自動生成ボタンのアクティブ解除 ---
+            const autoBtn = document.getElementById('autoRouteBtn');
+            if (autoBtn) autoBtn.classList.remove('active');
+
+            // --- 追加: 自動生成モードのポップアップを非表示 ---
+            const modeIndicator = document.getElementById('modeIndicator');
+            if (modeIndicator) modeIndicator.style.display = 'none';
         }
     }
 
@@ -1492,6 +1504,22 @@ class RouteManager {
         const modalBody = document.getElementById('routeModalBody');
         if (!modal || !modalBody) return;
         modalBody.innerHTML = '';
+        // --- 追加: 「以下の経路を登録する」ボタン ---
+        const registerBtn = document.createElement('button');
+        registerBtn.textContent = '以下の経路を登録する';
+        registerBtn.style.margin = '8px 0 16px 0';
+        registerBtn.className = 'route-register-btn';
+        registerBtn.onclick = () => {
+            modal.classList.remove('show');
+            const autoBtn = document.getElementById('autoRouteBtn');
+            if (autoBtn) autoBtn.classList.remove('active');
+            // --- 追加: 自動生成モードのポップアップを非表示 ---
+            const modeIndicator = document.getElementById('modeIndicator');
+            if (modeIndicator) modeIndicator.style.display = 'none';
+            // 必要なら状態リセット
+            delete this.candidateRoutes;
+        };
+        modalBody.appendChild(registerBtn);
         // 候補リスト
         const header = document.createElement('div');
         header.innerHTML = '<h3 style="margin:8px 0 4px 0; color:#1976D2; font-size:15px;">進路候補テーブル</h3>';
