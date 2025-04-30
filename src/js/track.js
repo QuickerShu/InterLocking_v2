@@ -162,7 +162,14 @@ class Track {
 
     // 指定した端点の接続情報を取得
     getConnection(endpointIndex) {
-        return this.connections.get(endpointIndex);
+        // endpointIndexを数値に変換して比較
+        if (this.connections instanceof Map) {
+            return this.connections.get(Number(endpointIndex)) || null;
+        } else if (Array.isArray(this.connections)) {
+            const found = this.connections.find(([idx, _]) => Number(idx) === Number(endpointIndex));
+            return found ? found[1] : null;
+        }
+        return null;
     }
 
     // 線路を回転させる

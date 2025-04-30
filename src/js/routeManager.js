@@ -996,27 +996,18 @@ class RouteManager {
         }
 
         // DFS本体
-        const dfs = (track, epIdx, path, pointStates) => {
-            // 分岐器内での折り返し（端点X→端点0→端点Y, X≠0, Y≠0, X≠Y）を除外
-            if (path.length >= 2) {
-                const prevStep = path[path.length - 2];
-                const lastStep = path[path.length - 1];
-                if (
-                    track.isPoint &&
-                    prevStep.trackId === track.id &&
-                    lastStep.trackId === track.id &&
-                    lastStep.endpoint === 0 &&
-                    epIdx !== 0 &&
-                    prevStep.endpoint !== 0 &&
-                    prevStep.endpoint !== epIdx
-                ) {
-                    console.log(`[DFS] 分岐器${track.id}内で端点${prevStep.endpoint}→0→${epIdx}の折り返しを棄却: path=`, path.map(p => `${p.trackId}:${p.endpoint}`));
+        const dfs = (track, epIdx, path, pointStates, doubleCrossMoveCountMap = new Map()) => {
+            // ダブルクロスを経路中で2回以上通過しないようにする
+            if (track.type === 'double_cross') {
+                const doubleCrossCount = path.filter(p => p.trackId === track.id).length;
+                if (doubleCrossCount >= 1) {
+                    console.log(`[DFS:SKIP] ダブルクロス${track.id} を経路中で2回以上通過しようとしたため棄却`);
                     return;
                 }
             }
             // デバッグログ追加
             console.log('[DFS] track.id:', track.id, 'epIdx:', epIdx, 'visited:', Array.from(visited), 'path:', path.map(p => `${p.trackId}:${p.endpoint}`));
-            const key = `${track.id}:${epIdx}`;
+            const key = `${String(track.id)}:${String(epIdx)}`;
             if (visited.has(key)) {
                 console.log(`[DFS] track.id: ${track.id} epIdx: ${epIdx} は訪問済みのため棄却`);
                 return;
@@ -1094,7 +1085,7 @@ class RouteManager {
                                             step.direction = pointStates[track.id];
                                         }
                                         let nextStep = { trackId: nextTrack.id, endpoint: conn.endpointIndex, direction: dir };
-                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates);
+                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates, doubleCrossMoveCountMap);
                                         delete pointStates[nextTrack.id];
                                         break;
                                     }
@@ -1114,7 +1105,7 @@ class RouteManager {
                                             step.direction = pointStates[track.id];
                                         }
                                         let nextStep = { trackId: nextTrack.id, endpoint: conn.endpointIndex, direction: dir };
-                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates);
+                                        dfs(nextTrack, conn.endpointIndex, [...path, step, nextStep], pointStates, doubleCrossMoveCountMap);
                                         delete pointStates[nextTrack.id];
                                         break;
                                     }
@@ -1144,7 +1135,7 @@ class RouteManager {
                                     if (track.isPoint && pointStates[track.id]) {
                                         step.direction = pointStates[track.id];
                                     }
-                                    dfs(nextTrack, nextEpIdx, [...path, step], pointStates);
+                                    dfs(nextTrack, nextEpIdx, [...path, step], pointStates, doubleCrossMoveCountMap);
                                 }
                                 delete pointStates[nextTrack.id];
                             });
@@ -1154,7 +1145,7 @@ class RouteManager {
                         if (track.isPoint && pointStates[track.id]) {
                             step.direction = pointStates[track.id];
                         }
-                        dfs(nextTrack, conn.endpointIndex, [...path, step], pointStates);
+                        dfs(nextTrack, conn.endpointIndex, [...path, step], pointStates, doubleCrossMoveCountMap);
                     }
                 }
             }
@@ -1168,38 +1159,13 @@ class RouteManager {
                 for (let i = 0; i < track.endpoints.length; i++) {
                     if (i !== epIdx) {
                         // --- ダブルクロスで既にtrack内端点間移動済みなら、track内移動は一切許容しない ---
-                        if (track.type === 'double_cross' && dfs._doubleCrossMoved[track.id]) {
-                            // 既にtrack内端点間移動済みならスキップ
-                            console.log(`[DFS:SKIP] ダブルクロス${track.id} 端点${epIdx}→端点${i} は既にtrack内移動済みのためスキップ`);
-                            continue;
-                        }
-                        if (track.isPoint) {
-                            if (track.type === 'point_left' || track.type === 'point_right') {
-                                // 0↔1, 0↔2のみ
-                                if (!((epIdx === 0 && (i === 1 || i === 2)) || (i === 0 && (epIdx === 1 || epIdx === 2)))) {
-                                    console.log(`[DFS:SKIP] 分岐器${track.id} 端点${epIdx}→端点${i} の移動は許容されていないためスキップ`);
-                                    continue;
-                                } else {
-                                    console.log(`[DFS:OK] 分岐器${track.id} 端点${epIdx}→端点${i} の移動を許容`);
-                                }
-                            } else if (track.type === 'double_cross') {
-                                // ダブルクロスは許可ペアのみ
-                                const allowedPairs = [
-                                    [0,1],[1,0],[2,3],[3,2], // 直進
-                                    [0,3],[3,0],[1,2],[2,1]  // 分岐
-                                ];
-                                const isAllowed = allowedPairs.some(([a,b]) => (epIdx === a && i === b));
-                                if (!isAllowed) {
-                                    console.log(`[DFS:SKIP] ダブルクロス${track.id} 端点${epIdx}→端点${i} の移動は許容されていないためスキップ`);
-                                    continue;
-                                } else {
-                                    console.log(`[DFS:OK] ダブルクロス${track.id} 端点${epIdx}→端点${i} の移動を許容`);
-                                    // ここでtrack内端点間移動を記録
-                                    dfs._doubleCrossMoved[track.id] = true;
-                                }
+                        if (track.type === 'double_cross') {
+                            const moveCount = doubleCrossMoveCountMap.get(track.id) || 0;
+                            if (moveCount >= 1) {
+                                // 既にtrack内端点間移動済みならスキップ
+                                console.log(`[DFS:SKIP] ダブルクロス${track.id} 端点${epIdx}→端点${i} は既にtrack内移動済みのためスキップ`);
+                                continue;
                             }
-                        } else {
-                            console.log(`[DFS:OK] 通常線路${track.id} 端点${epIdx}→端点${i} の移動を許容`);
                         }
                         let step = { trackId: track.id, endpoint: i };
                         if (track.isPoint && pointStates[track.id]) {
@@ -1207,9 +1173,28 @@ class RouteManager {
                         }
                         console.log(`[DFS:CALL] track.id: ${track.id}, from epIdx: ${epIdx} → to epIdx: ${i}, path:`, [...path, step].map(p => `${p.trackId}:${p.endpoint}${p.direction ? ':'+p.direction : ''}`), 'pointStates:', JSON.stringify(pointStates));
                         dfs(track, i, [...path, step], pointStates);
-                        // --- ダブルクロスtrack内端点間移動のフラグを戻す ---
-                        if (track.type === 'double_cross' && dfs._doubleCrossMoved[track.id]) {
-                            dfs._doubleCrossMoved[track.id] = false;
+                        // --- 追加: track内端点間移動直後、その端点iに外部線路への接続があれば必ず外部線路へのDFSも呼ぶ ---
+                        let connAfter = null;
+                        if (track.getConnection) {
+                            connAfter = track.getConnection(i);
+                        } else if (track.connections) {
+                            if (typeof track.connections.get === 'function') {
+                                connAfter = track.connections.get(i);
+                            } else if (Array.isArray(track.connections)) {
+                                const found = track.connections.find(([idx, _]) => Number(idx) === Number(i));
+                                if (found) connAfter = found[1];
+                            }
+                        }
+                        if (connAfter) {
+                            let nextTrackAfter = null;
+                            if (track.trackManager) {
+                                nextTrackAfter = track.trackManager.getTrack(connAfter.trackId);
+                            } else if (this.interlockingManager && this.interlockingManager.trackManager) {
+                                nextTrackAfter = this.interlockingManager.trackManager.getTrack(connAfter.trackId);
+                            }
+                            if (nextTrackAfter) {
+                                dfs(nextTrackAfter, connAfter.endpointIndex, [...path, step], pointStates);
+                            }
                         }
                     }
                 }
