@@ -1033,15 +1033,8 @@ class RouteManager {
             }
 
             // --- 修正: 直前のstepが同じtrack内の端点間移動なら通過回数を増やさない ---
-            let isSameTrackMove = false;
-            if (path.length > 0) {
-                const prevStep = path[path.length - 1];
-                if (prevStep.trackId === track.id) {
-                    isSameTrackMove = true;
-                }
-            }
             let currentCount = trackPassCount.get(track.id) || 0;
-            if (!isSameTrackMove) {
+            if (path.length === 0 || path[path.length - 1].trackId !== track.id) {
                 // 目的地以外の線路で2回以上の通過は禁止
                 if (currentCount >= 2 && String(track.id) !== destTrackId) {
                     console.log(`[DFS] 線路${track.id}の通過回数が上限を超えたため探索中止: path=`, path.map(p => `${p.trackId}:${p.endpoint}`));
@@ -1167,38 +1160,63 @@ class RouteManager {
             }
             // --- 追加: 同じtrack内の他の端点にも移動 ---
             if (Array.isArray(track.endpoints)) {
+                // ダブルクロス内端点間移動フラグ
+                if (!dfs._doubleCrossMoved) dfs._doubleCrossMoved = {};
+                if (track.type === 'double_cross' && typeof dfs._doubleCrossMoved[track.id] === 'undefined') {
+                    dfs._doubleCrossMoved[track.id] = false;
+                }
                 for (let i = 0; i < track.endpoints.length; i++) {
                     if (i !== epIdx) {
-                        // 分岐器の場合は0↔1, 0↔2のみ許容
+                        // --- ダブルクロスで既にtrack内端点間移動済みなら、track内移動は一切許容しない ---
+                        if (track.type === 'double_cross' && dfs._doubleCrossMoved[track.id]) {
+                            // 既にtrack内端点間移動済みならスキップ
+                            console.log(`[DFS:SKIP] ダブルクロス${track.id} 端点${epIdx}→端点${i} は既にtrack内移動済みのためスキップ`);
+                            continue;
+                        }
                         if (track.isPoint) {
                             if (track.type === 'point_left' || track.type === 'point_right') {
                                 // 0↔1, 0↔2のみ
                                 if (!((epIdx === 0 && (i === 1 || i === 2)) || (i === 0 && (epIdx === 1 || epIdx === 2)))) {
-                                    // デバッグ: 端点間移動が除外される場合
                                     console.log(`[DFS:SKIP] 分岐器${track.id} 端点${epIdx}→端点${i} の移動は許容されていないためスキップ`);
                                     continue;
                                 } else {
-                                    // デバッグ: 端点0↔1, 0↔2の移動
                                     console.log(`[DFS:OK] 分岐器${track.id} 端点${epIdx}→端点${i} の移動を許容`);
+                                }
+                            } else if (track.type === 'double_cross') {
+                                // ダブルクロスは許可ペアのみ
+                                const allowedPairs = [
+                                    [0,1],[1,0],[2,3],[3,2], // 直進
+                                    [0,3],[3,0],[1,2],[2,1]  // 分岐
+                                ];
+                                const isAllowed = allowedPairs.some(([a,b]) => (epIdx === a && i === b));
+                                if (!isAllowed) {
+                                    console.log(`[DFS:SKIP] ダブルクロス${track.id} 端点${epIdx}→端点${i} の移動は許容されていないためスキップ`);
+                                    continue;
+                                } else {
+                                    console.log(`[DFS:OK] ダブルクロス${track.id} 端点${epIdx}→端点${i} の移動を許容`);
+                                    // ここでtrack内端点間移動を記録
+                                    dfs._doubleCrossMoved[track.id] = true;
                                 }
                             }
                         } else {
-                            // デバッグ: 通常線路の端点間移動
                             console.log(`[DFS:OK] 通常線路${track.id} 端点${epIdx}→端点${i} の移動を許容`);
                         }
                         let step = { trackId: track.id, endpoint: i };
                         if (track.isPoint && pointStates[track.id]) {
                             step.direction = pointStates[track.id];
                         }
-                        // デバッグ: DFS呼び出し前の情報
                         console.log(`[DFS:CALL] track.id: ${track.id}, from epIdx: ${epIdx} → to epIdx: ${i}, path:`, [...path, step].map(p => `${p.trackId}:${p.endpoint}${p.direction ? ':'+p.direction : ''}`), 'pointStates:', JSON.stringify(pointStates));
                         dfs(track, i, [...path, step], pointStates);
+                        // --- ダブルクロスtrack内端点間移動のフラグを戻す ---
+                        if (track.type === 'double_cross' && dfs._doubleCrossMoved[track.id]) {
+                            dfs._doubleCrossMoved[track.id] = false;
+                        }
                     }
                 }
             }
             visited.delete(key);
             // --- 修正: 通過回数の減算も同じtrack内の端点間移動は除外 ---
-            if (!isSameTrackMove) {
+            if (path.length === 0 || path[path.length - 1].trackId !== track.id) {
                 const count = trackPassCount.get(track.id);
                 if (count === 1) {
                     trackPassCount.delete(track.id);
