@@ -16,6 +16,16 @@ class InterlockingManager {
         this.destinationButtons = [];
         this.trackInsulations = [];
         
+        // 要素の連番カウンター
+        this.counters = {
+            signal: 1,          // 信号てこ
+            shunting_signal: 1, // 入換てこ
+            shunting_marker: 1, // 標識てこ
+            through_lever: 1,   // 開通てこ
+            destButton: 1,      // 着点ボタン
+            insulation: 1       // 線路絶縁
+        };
+        
         // 進路選択状態の管理
         this.routeSelectionState = {
             isSelectingRoute: false,
@@ -492,78 +502,6 @@ class InterlockingManager {
     }
     
     /**
-     * 発点てこを追加
-     * @param {Object} options てこのオプション
-     * @returns {StartLever} 追加されたてこ
-     */
-    addStartLever(options) {
-        const { id, type, x, y, trackId } = options;
-        
-        // 既存のIDチェック
-        if (this.startLevers.some(lever => lever.id === id)) {
-            throw new Error(`ID ${id} の発点てこは既に存在します`);
-        }
-        
-        // てこの作成
-        const lever = new StartLever(id, type, x, y, trackId);
-        
-        // コレクションに追加
-        this.startLevers.push(lever);
-        
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        
-        return lever;
-    }
-    
-    /**
-     * 着点ボタンを追加
-     * @param {Object} options ボタンのオプション
-     * @returns {DestinationButton} 追加されたボタン
-     */
-    addDestinationButton(options) {
-        const { id, x, y, trackId } = options;
-        // 既存のIDチェック
-        if (this.destinationButtons.some(button => button.id === id)) {
-            throw new Error(`ID ${id} の着点ボタンは既に存在します`);
-        }
-        // ボタンの作成
-        const button = new DestinationButton(x, y);
-        button.id = id;
-        button.trackId = trackId;
-        // コレクションに追加
-        this.destinationButtons.push(button);
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        return button;
-    }
-    
-    /**
-     * 線路絶縁を追加
-     * @param {Object} options 線路絶縁のオプション
-     * @returns {TrackInsulation} 追加された線路絶縁
-     */
-    addTrackInsulation(options) {
-        const { id, position, type, direction } = options;
-        
-        // 既存のIDチェック
-        if (this.trackInsulations.some(insulation => insulation.id === id)) {
-            throw new Error(`ID ${id} の線路絶縁は既に存在します`);
-        }
-        
-        // 線路絶縁の作成
-        const insulation = new TrackInsulation(id, position, type, direction);
-        
-        // コレクションに追加
-        this.trackInsulations.push(insulation);
-        
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        
-        return insulation;
-    }
-    
-    /**
      * 要素の削除
      * @param {string} id 削除する要素のID
      * @param {string} type 要素の種類 ('lever', 'button', 'insulation')
@@ -856,6 +794,98 @@ class InterlockingManager {
                 )
             ];
         }
+    }
+
+    // 要素タイプに応じた次の連番を取得
+    getNextNumber(type) {
+        if (this.counters.hasOwnProperty(type)) {
+            const num = this.counters[type];
+            this.counters[type]++;
+            return num;
+        }
+        return 1;
+    }
+
+    // 連番をリセット（必要に応じて）
+    resetCounters() {
+        Object.keys(this.counters).forEach(key => {
+            this.counters[key] = 1;
+        });
+    }
+
+    // 既存の要素から連番を再計算
+    recalculateCounters() {
+        this.resetCounters();
+        
+        // 発点てこの連番を更新
+        this.startLevers.forEach(lever => {
+            const num = parseInt(lever.name.match(/\d+$/)?.[0] || '0');
+            if (num >= this.counters[lever.type]) {
+                this.counters[lever.type] = num + 1;
+            }
+        });
+
+        // 着点ボタンの連番を更新
+        this.destinationButtons.forEach(button => {
+            const num = parseInt(button.name.match(/\d+$/)?.[0] || '0');
+            if (num >= this.counters.destButton) {
+                this.counters.destButton = num + 1;
+            }
+        });
+
+        // 線路絶縁の連番を更新
+        this.trackInsulations.forEach(insulation => {
+            const num = parseInt(insulation.name.match(/\d+$/)?.[0] || '0');
+            if (num >= this.counters.insulation) {
+                this.counters.insulation = num + 1;
+            }
+        });
+    }
+
+    /**
+     * 発点てこを追加
+     */
+    addStartLever(options) {
+        const { id, type, x, y, trackId } = options;
+        
+        // 既存のIDチェック
+        if (this.startLevers.some(lever => lever.id === id)) {
+            throw new Error(`ID ${id} の発点てこは既に存在します`);
+        }
+        
+        // てこの作成
+        const lever = new StartLever(id, type, x, y, trackId, this.getNextNumber(type));
+        
+        // コレクションに追加
+        this.startLevers.push(lever);
+        
+        // 画面の再描画をリクエスト
+        this.canvas.draw();
+        
+        return lever;
+    }
+
+    /**
+     * 着点ボタンを追加
+     */
+    addDestinationButton(options) {
+        const { id, x, y, trackId } = options;
+        
+        // 既存のIDチェック
+        if (this.destinationButtons.some(button => button.id === id)) {
+            throw new Error(`ID ${id} の着点ボタンは既に存在します`);
+        }
+        
+        // ボタンの作成
+        const button = new DestinationButton(id, { x, y }, trackId, this.getNextNumber('destButton'));
+        
+        // コレクションに追加
+        this.destinationButtons.push(button);
+        
+        // 画面の再描画をリクエスト
+        this.canvas.draw();
+        
+        return button;
     }
 }
 

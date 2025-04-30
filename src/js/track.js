@@ -2,6 +2,7 @@ class Track {
     constructor(id, type, x, y) {
         this.id = id;                // 線路ID
         this.type = type;            // 線路タイプ
+        this.name = `${this.getTrackTypeName(type)}${id}`; // 線路名称
         this.endpoints = [];         // 端点座標の配列 [{x, y}, ...]
         this.connections = new Map(); // Map<endpointIndex, { trackId, endpointIndex }>
         this.visible = true;         // 表示/非表示
@@ -18,6 +19,22 @@ class Track {
         this.setPosition(x, y);
     }
 
+    // 線路タイプから表示名を取得
+    getTrackTypeName(type) {
+        const typeNames = {
+            'straight': '直線',
+            'curve': '曲線',
+            'point_left': '左分岐',
+            'point_right': '右分岐',
+            'double_slip': '交差両分岐',
+            'double_slip_x': '交差両分岐X',
+            'crossing': '交差',
+            'end': '端部'
+        };
+        return typeNames[type] || type;
+    }
+
+    
     // 端点を追加
     addEndpoint(x, y) {
         this.endpoints.push({x, y});
@@ -252,6 +269,7 @@ class Track {
         return {
             id: this.id,
             type: this.type,
+            name: this.name,
             endpoints: this.endpoints,
             connections: Array.from(this.connections.entries()),
             status: this.status,
@@ -266,6 +284,7 @@ class Track {
     // JSONから復元
     static fromJSON(data) {
         const track = new Track(data.id, data.type);
+        track.name = data.name || track.name; // 名前がない場合はデフォルト値を使用
         track.endpoints = data.endpoints || [];
         track.connections = new Map(data.connections || []);
         track.status = data.status || 'normal';

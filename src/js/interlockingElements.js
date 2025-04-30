@@ -46,8 +46,23 @@ class InterlockingElement {
     constructor(type, x, y) {
         this.id = crypto.randomUUID();
         this.type = type;
+        this.name = `${this.getElementTypeName(type)}${this.id.substring(0, 4)}`; // 要素名称
         this.x = x;
         this.y = y;
+    }
+
+    // 要素タイプから表示名を取得
+    getElementTypeName(type) {
+        const typeNames = {
+            'signalLever': '信号てこ',
+            'shuntingLever': '入換てこ',
+            'markerLever': '標識てこ',
+            'throughLever': '開通てこ',
+            'destButton': '着点ボタン',
+            'straightInsulation': '直線絶縁',
+            'crossInsulation': '絶縁クロス'
+        };
+        return typeNames[type] || type;
     }
 
     createElement() {
@@ -64,6 +79,23 @@ class InterlockingElement {
             }
         });
 
+        return element;
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            type: this.type,
+            name: this.name,
+            x: this.x,
+            y: this.y
+        };
+    }
+
+    static fromJSON(data) {
+        const element = new InterlockingElement(data.type, data.x, data.y);
+        element.id = data.id;
+        element.name = data.name || element.name; // 名前がない場合はデフォルト値を使用
         return element;
     }
 }
@@ -92,11 +124,27 @@ class ThroughLever extends InterlockingElement {
     }
 }
 
+/**
+ * 着点ボタンクラス
+ * 進路の終点となるボタンを表現する
+ */
 class DestinationButton extends InterlockingElement {
-    constructor(x, y) {
-        super('destButton', x, y);
-        this.state = BUTTON_STATES.NORMAL;  // 初期状態は通常
-        this.routes = [];                   // 対応する進路リスト
+    /**
+     * 着点ボタンのコンストラクタ
+     * @param {string} id - ボタンの一意の識別子
+     * @param {Object} position - 画面上の位置 {x, y}
+     * @param {string} trackId - 設置された線路ID
+     * @param {number} number - 連番
+     */
+    constructor(id, position, trackId, number = 1) {
+        super('destButton', position.x, position.y);
+        this.id = id;                  // ボタンID（親クラスのIDを上書き）
+        this.trackId = trackId;        // 設置された線路ID
+        this.state = BUTTON_STATES.NORMAL; // 初期状態は通常
+        this.routes = [];              // 対応する進路リスト
+
+        // 名前を設定
+        this.name = `着点ボタン${number}`;
     }
 
     /**
@@ -133,7 +181,7 @@ class DestinationButton extends InterlockingElement {
  * 発点てこクラス
  * 進路の始点となる制御レバーを表現する
  */
-class StartLever {
+class StartLever extends InterlockingElement {
     /**
      * 発点てこのコンストラクタ
      * @param {string} id - てこの一意の識別子
@@ -141,12 +189,11 @@ class StartLever {
      * @param {number} x - X座標
      * @param {number} y - Y座標
      * @param {string} trackId - 設置された線路ID
+     * @param {number} number - 連番
      */
-    constructor(id, type, x, y, trackId) {
-        this.id = id;                  // てこID
-        this.type = type;              // てこタイプ
-        this.x = x;                    // X座標
-        this.y = y;                    // Y座標
+    constructor(id, type, x, y, trackId, number = 1) {
+        super(type, x, y);
+        this.id = id;                  // てこID（親クラスのIDを上書き）
         this.trackId = trackId;        // 設置された線路ID
         this.state = LEVER_STATES.NEUTRAL; // 初期状態は中立
         this.selected = false;         // 選択状態
@@ -156,6 +203,15 @@ class StartLever {
             blinkCount: 0,             // 点滅カウンタ
             active: false              // 進路開通中か
         };
+
+        // てこタイプに応じた名前を設定
+        const typeNames = {
+            'signal': '信号てこ',
+            'shunting_signal': '入換てこ',
+            'shunting_marker': '標識てこ',
+            'through_lever': '開通てこ'
+        };
+        this.name = `${typeNames[type] || type}${number}`;
     }
     
     /**

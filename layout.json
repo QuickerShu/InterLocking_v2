@@ -3,14 +3,15 @@
     {
       "id": 1,
       "type": "straight",
+      "name": "直線1",
       "endpoints": [
         {
-          "x": 160,
-          "y": 240
+          "x": 120,
+          "y": 320
         },
         {
-          "x": 380,
-          "y": 240
+          "x": 300,
+          "y": 220
         }
       ],
       "connections": [
@@ -31,18 +32,15 @@
     },
     {
       "id": 2,
-      "type": "point_left",
+      "type": "straight",
+      "name": "直線2",
       "endpoints": [
         {
+          "x": 300,
+          "y": 220
+        },
+        {
           "x": 380,
-          "y": 240
-        },
-        {
-          "x": 460,
-          "y": 240
-        },
-        {
-          "x": 420,
           "y": 220
         }
       ],
@@ -55,14 +53,55 @@
           }
         ],
         [
-          2,
+          1,
           {
             "trackId": 3,
             "endpointIndex": 0
           }
+        ]
+      ],
+      "status": "ROUTE",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 3,
+      "type": "point_left",
+      "name": "左分岐3",
+      "endpoints": [
+        {
+          "x": 380,
+          "y": 220
+        },
+        {
+          "x": 460,
+          "y": 220
+        },
+        {
+          "x": 420,
+          "y": 200
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 2,
+            "endpointIndex": 1
+          }
         ],
         [
           1,
+          {
+            "trackId": 4,
+            "endpointIndex": 0
+          }
+        ],
+        [
+          2,
           {
             "trackId": 5,
             "endpointIndex": 0
@@ -77,30 +116,61 @@
       "visible": true
     },
     {
-      "id": 3,
+      "id": 4,
       "type": "straight",
+      "name": "直線4",
       "endpoints": [
         {
-          "x": 420,
+          "x": 460,
           "y": 220
         },
         {
-          "x": 500,
-          "y": 180
+          "x": 760,
+          "y": 220
         }
       ],
       "connections": [
         [
           0,
           {
-            "trackId": 2,
+            "trackId": 3,
+            "endpointIndex": 1
+          }
+        ]
+      ],
+      "status": "ROUTE",
+      "isPoint": false,
+      "pointDirection": "normal",
+      "dccAddress": 0,
+      "invertDcc": false,
+      "visible": true
+    },
+    {
+      "id": 5,
+      "type": "straight",
+      "name": "直線5",
+      "endpoints": [
+        {
+          "x": 420,
+          "y": 200
+        },
+        {
+          "x": 600,
+          "y": 120
+        }
+      ],
+      "connections": [
+        [
+          0,
+          {
+            "trackId": 3,
             "endpointIndex": 2
           }
         ],
         [
           1,
           {
-            "trackId": 4,
+            "trackId": 6,
             "endpointIndex": 0
           }
         ]
@@ -113,23 +183,24 @@
       "visible": true
     },
     {
-      "id": 4,
+      "id": 6,
       "type": "straight",
+      "name": "直線6",
       "endpoints": [
         {
-          "x": 500,
-          "y": 180
+          "x": 600,
+          "y": 120
         },
         {
-          "x": 760,
-          "y": 180
+          "x": 780,
+          "y": 120
         }
       ],
       "connections": [
         [
           0,
           {
-            "trackId": 3,
+            "trackId": 5,
             "endpointIndex": 1
           }
         ]
@@ -140,111 +211,31 @@
       "dccAddress": 0,
       "invertDcc": false,
       "visible": true
-    },
-    {
-      "id": 5,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 460,
-          "y": 240
-        },
-        {
-          "x": 760,
-          "y": 240
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 2,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
     }
   ],
   "startLevers": [
     {
-      "id": "signalLever_1745974312513_292",
+      "id": "signalLever_1745991100363_553",
       "type": "signal",
-      "x": 200,
-      "y": 240,
-      "trackId": 1,
-      "state": "neutral",
-      "selected": false,
-      "routes": [],
-      "animation": {
-        "blink": false,
-        "blinkCount": 0,
-        "active": false
-      }
-    },
-    {
-      "id": "signalLever_1745974314997_445",
-      "type": "signal",
-      "x": 680,
-      "y": 180,
-      "trackId": 4,
-      "state": "neutral",
-      "selected": false,
-      "routes": [],
-      "animation": {
-        "blink": false,
-        "blinkCount": 0,
-        "active": false
-      }
-    },
-    {
-      "id": "signalLever_1745974318873_400",
-      "type": "signal",
-      "x": 680,
-      "y": 240,
-      "trackId": 5,
-      "state": "neutral",
-      "selected": false,
-      "routes": [],
-      "animation": {
-        "blink": false,
-        "blinkCount": 0,
-        "active": false
-      }
+      "name": "信号てこ1",
+      "x": 180,
+      "y": 280
     }
   ],
   "destinationButtons": [
     {
-      "id": "destButton_1745974321108_74",
+      "id": "destButton_1745991103001_700",
       "type": "destButton",
-      "x": 260,
-      "y": 240,
-      "state": "normal",
-      "routes": [],
-      "trackId": 1
+      "name": "着点ボタン1",
+      "x": 720,
+      "y": 120
     },
     {
-      "id": "destButton_1745974323442_190",
+      "id": "destButton_1745991104748_633",
       "type": "destButton",
-      "x": 600,
-      "y": 180,
-      "state": "normal",
-      "routes": [],
-      "trackId": 4
-    },
-    {
-      "id": "destButton_1745974325942_726",
-      "type": "destButton",
-      "x": 600,
-      "y": 240,
-      "state": "normal",
-      "routes": [],
-      "trackId": 5
+      "name": "着点ボタン2",
+      "x": 720,
+      "y": 220
     }
   ],
   "trackInsulations": []

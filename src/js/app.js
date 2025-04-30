@@ -2935,156 +2935,100 @@ class App {
      * 選択されたトラックのプロパティを更新
      * @param {Track} track 選択されたトラック
      */
-    updateSelectedProperties(track, type = 'track', options = {}) {
+    updateSelectedProperties(element, type = 'track', options = {}) {
         const propertiesContainer = document.getElementById('selected-properties');
         if (!propertiesContainer) return;
-        // ポイント・ダブルクロス・ダブルスリップ配置直後のみ簡易入力UI
-        const isPointLike = type === 'track' && track && (
-            (track.type && track.type.startsWith('point_')) ||
-            track.type === 'double_cross' ||
-            track.type === 'double_slip_x'
-        );
-        if (options.onlyPointDcc && isPointLike) {
-            propertiesContainer.innerHTML = `
-                <div class="property-group">
-                    <h3>ポイント設定</h3>
-                    <div class="input-group">
-                        <label for="point-address">DCCアドレス:</label>
-                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
-                    </div>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
-                        <label for="invert-dcc">DCC出力を反転</label>
-                    </div>
-                </div>
-            `;
-            // イベント設定
-            const addressInput = document.getElementById('point-address');
-            if (addressInput) {
-                addressInput.addEventListener('change', () => {
-                    const newAddress = parseInt(addressInput.value, 10);
-                    if (!isNaN(newAddress)) {
-                        track.dccAddress = newAddress;
-                        this.updatePointsList && this.updatePointsList();
-                    }
-                });
-            }
-            const invertDccCheckbox = document.getElementById('invert-dcc');
-            if (invertDccCheckbox) {
-                invertDccCheckbox.addEventListener('change', () => {
-                    track.invertDcc = invertDccCheckbox.checked;
-                    this.updatePointsList && this.updatePointsList();
-                });
-            }
+
+        // 要素が選択されていない場合
+        if (!element) {
+            propertiesContainer.innerHTML = '<p>パーツを選択してください</p>';
             return;
         }
-        // 通常のプロパティ表示
-        if (typeof origUpdateSelectedProperties === 'function') {
-            origUpdateSelectedProperties.call(this, track, type);
+
+        // 要素のタイプに応じてプロパティHTMLを生成
+        let propertiesHTML = '';
+        switch (type) {
+            case 'track':
+                propertiesHTML = this.createTrackPropertiesHTML(element);
+                break;
+            case 'lever':
+                propertiesHTML = this.createLeverPropertiesHTML(element);
+                break;
+            case 'button':
+                propertiesHTML = this.createButtonPropertiesHTML(element);
+                break;
+            case 'insulation':
+                propertiesHTML = this.createInsulationPropertiesHTML(element);
+                break;
+            default:
+                propertiesHTML = '<p>未対応の要素タイプです</p>';
+                break;
         }
-        if (!track) return;
-        if (isPointLike) {
-            // DCCアドレス・反転設定UIを常に表示
-            propertiesContainer.innerHTML = `
-                <div class="property-group">
-                    <h3>${track.type === 'double_cross' ? 'ダブルクロス' : track.type === 'double_slip_x' ? 'ダブルスリップ' : 'ポイント'}設定</h3>
-                    <div class="input-group">
-                        <label for="point-address">DCCアドレス:</label>
-                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
-                    </div>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
-                        <label for="invert-dcc">DCC出力を反転</label>
-                    </div>
-                </div>
-            `;
-            // イベント設定
-            const addressInput = document.getElementById('point-address');
-            if (addressInput) {
-                addressInput.addEventListener('change', () => {
-                    const newAddress = parseInt(addressInput.value, 10);
-                    if (!isNaN(newAddress)) {
-                        track.dccAddress = newAddress;
-                        this.updatePointsList && this.updatePointsList();
-                    }
-                });
-            }
-            const invertDccCheckbox = document.getElementById('invert-dcc');
-            if (invertDccCheckbox) {
-                invertDccCheckbox.addEventListener('change', () => {
-                    track.invertDcc = invertDccCheckbox.checked;
-                    this.updatePointsList && this.updatePointsList();
-                });
-            }
-            return;
-        }
+
+        // プロパティHTMLを設定
+        propertiesContainer.innerHTML = propertiesHTML;
+
+        // イベントリスナーを設定
+        this.setupPropertyEventListeners(element, type);
     }
 
     /**
      * 線路パーツのプロパティHTML生成
      */
     createTrackPropertiesHTML(track) {
-        // トラックタイプの名称を取得
-        const typeName = this.getTrackTypeName(track.type);
-
-        let html = `
+        return `
             <div class="property-group">
-                <h3>線路パーツ情報</h3>
-                <p><strong>ID:</strong> ${track.id}</p>
-                <p><strong>タイプ:</strong> ${typeName}</p>
-                <p><strong>位置:</strong> X=${Math.round(track.endpoints[0].x)}, Y=${Math.round(track.endpoints[0].y)}</p>
+                <h3>線路プロパティ</h3>
+                <div class="property-item">
+                    <label>ID:</label>
+                    <span>${track.id}</span>
+                </div>
+                <div class="property-item">
+                    <label>名称:</label>
+                    <input type="text" class="track-name" value="${track.name}" data-track-id="${track.id}">
+                </div>
+                <div class="property-item">
+                    <label>タイプ:</label>
+                    <span>${this.getTrackTypeName(track.type)}</span>
+                </div>
+                ${track.isPoint ? `
+                <div class="property-item">
+                    <label>DCCアドレス:</label>
+                    <input type="number" class="dcc-address" value="${track.dccAddress}" min="0" max="999">
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
+                        出力反転
+                    </label>
+                </div>
+                ` : ''}
             </div>
         `;
-
-        // ポイントの場合は追加のプロパティを表示
-        if (track.type.startsWith('point_')) {
-            html += `
-                <div class="property-group">
-                    <h3>ポイント設定</h3>
-                    <div class="input-group">
-                        <label for="point-address">アドレス:</label>
-                        <input type="number" id="point-address" value="${track.dccAddress || ''}" min="0" max="2044">
-                    </div>
-                    <div class="checkbox-container">
-                        <input type="checkbox" id="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
-                        <label for="invert-dcc">DCC出力を反転</label>
-                    </div>
-                </div>
-            `;
-        }
-
-        return html;
     }
 
     /**
      * てこのプロパティHTML生成
      */
     createLeverPropertiesHTML(lever) {
-        const leverTypeNames = {
-            'signal': '信号てこ(赤)',
-            'shunting_signal': '入換てこ(白)',
-            'shunting_marker': '入換標識てこ(緑)',
-            'through_lever': '開通てこ(黄)'
-        };
-
-        // 関連付けられた線路の情報を取得
-        const track = lever.trackId ? this.trackManager.getTrack(lever.trackId) : null;
-        const trackInfo = track ? 
-            `ID: ${track.id} (${Math.round(track.endpoints[0].x)}, ${Math.round(track.endpoints[0].y)})` : 
-            '未設定';
-
         return `
             <div class="property-group">
-                <h3>てこ情報</h3>
-                <p><strong>ID:</strong> ${lever.id}</p>
-                <p><strong>タイプ:</strong> ${leverTypeNames[lever.type] || lever.type}</p>
-                <p><strong>位置:</strong> X=${Math.round(lever.x)}, Y=${Math.round(lever.y)}</p>
-            </div>
-            <div class="property-group">
-                <h3>関連付け設定</h3>
-                <p><strong>関連線路:</strong> ${trackInfo}</p>
-                <button id="reassign-track" class="property-action-btn">線路を再設定</button>
-                <button id="clear-track" class="property-action-btn" ${!lever.trackId ? 'disabled' : ''}>関連を解除</button>
+                <h3>てこプロパティ</h3>
+                <div class="property-item">
+                    <label>ID:</label>
+                    <span>${lever.id}</span>
+                </div>
+                <div class="property-item">
+                    <label>名称:</label>
+                    <input type="text" class="lever-name" value="${lever.name}" data-lever-id="${lever.id}">
+                </div>
+                <div class="property-item">
+                    <label>タイプ:</label>
+                    <span>${this.getLeverTypeName(lever.type)}</span>
+                </div>
+                <div class="property-item">
+                    <label>設置線路:</label>
+                    <span class="track-id">${lever.trackId || '未設定'}</span>
+                    <button class="reassign-track">変更</button>
+                </div>
             </div>
         `;
     }
@@ -3093,23 +3037,22 @@ class App {
      * 着点ボタンのプロパティHTML生成
      */
     createButtonPropertiesHTML(button) {
-        // 関連付けられた線路の情報を取得
-        const track = button.trackId ? this.trackManager.getTrack(button.trackId) : null;
-        const trackInfo = track ? 
-            `ID: ${track.id} (${Math.round(track.endpoints[0].x)}, ${Math.round(track.endpoints[0].y)})` : 
-            '未設定';
-
         return `
             <div class="property-group">
-                <h3>着点ボタン情報</h3>
-                <p><strong>ID:</strong> ${button.id}</p>
-                <p><strong>位置:</strong> X=${Math.round(button.x)}, Y=${Math.round(button.y)}</p>
-            </div>
-            <div class="property-group">
-                <h3>関連付け設定</h3>
-                <p><strong>関連線路:</strong> ${trackInfo}</p>
-                <button id="reassign-track" class="property-action-btn">線路を再設定</button>
-                <button id="clear-track" class="property-action-btn" ${!button.trackId ? 'disabled' : ''}>関連を解除</button>
+                <h3>ボタンプロパティ</h3>
+                <div class="property-item">
+                    <label>ID:</label>
+                    <span>${button.id}</span>
+                </div>
+                <div class="property-item">
+                    <label>名称:</label>
+                    <input type="text" class="button-name" value="${button.name}" data-button-id="${button.id}">
+                </div>
+                <div class="property-item">
+                    <label>設置線路:</label>
+                    <span class="track-id">${button.trackId || '未設定'}</span>
+                    <button class="reassign-track">変更</button>
+                </div>
             </div>
         `;
     }
@@ -3118,24 +3061,26 @@ class App {
      * 線路絶縁のプロパティHTML生成
      */
     createInsulationPropertiesHTML(insulation) {
-        // 関連付けられた線路の情報を取得
-        let trackId = (insulation.trackSegments && insulation.trackSegments.length > 0) ? insulation.trackSegments[0].trackId : null;
-        const track = trackId ? this.trackManager.getTrack(trackId) : null;
-        const trackInfo = track ?
-            `ID: ${track.id} (${Math.round(track.endpoints[0].x)}, ${Math.round(track.endpoints[0].y)})` :
-            '未設定';
         return `
             <div class="property-group">
-                <h3>線路絶縁情報</h3>
-                <p><strong>ID:</strong> ${insulation.id}</p>
-                <p><strong>タイプ:</strong> ${insulation.type === 'straight' ? '直線絶縁' : '絶縁クロス'}</p>
-                <p><strong>位置:</strong> X=${Math.round(insulation.position.x)}, Y=${Math.round(insulation.position.y)}</p>
-            </div>
-            <div class="property-group">
-                <h3>関連付け設定</h3>
-                <p><strong>関連線路:</strong> ${trackInfo}</p>
-                <button id="reassign-track" class="property-action-btn">線路を再設定</button>
-                <button id="clear-track" class="property-action-btn" ${!trackId ? 'disabled' : ''}>関連を解除</button>
+                <h3>絶縁プロパティ</h3>
+                <div class="property-item">
+                    <label>ID:</label>
+                    <span>${insulation.id}</span>
+                </div>
+                <div class="property-item">
+                    <label>名称:</label>
+                    <input type="text" class="insulation-name" value="${insulation.name}" data-insulation-id="${insulation.id}">
+                </div>
+                <div class="property-item">
+                    <label>タイプ:</label>
+                    <span>${this.getInsulationTypeName(insulation.type)}</span>
+                </div>
+                <div class="property-item">
+                    <label>設置線路:</label>
+                    <span class="track-id">${insulation.trackId || '未設定'}</span>
+                    <button class="reassign-track">変更</button>
+                </div>
             </div>
         `;
     }
@@ -3144,72 +3089,72 @@ class App {
      * プロパティパネルのイベントリスナー設定
      */
     setupPropertyEventListeners(element, type) {
-        switch (type) {
-            case 'track':
-                if (element.type.startsWith('point_')) {
-                    // ポイントのアドレス設定
-                    const addressInput = document.getElementById('point-address');
-                    if (addressInput) {
-                        addressInput.addEventListener('change', () => {
-                            const newAddress = parseInt(addressInput.value, 10);
-                            if (!isNaN(newAddress)) {
-                                element.dccAddress = newAddress;
-                                this.updatePointsList();
-                            }
-                        });
-                    }
+        const container = this.selectedProperties;
 
-                    // DCC出力反転設定
-                    const invertDccCheckbox = document.getElementById('invert-dcc');
-                    if (invertDccCheckbox) {
-                        invertDccCheckbox.addEventListener('change', () => {
-                            element.invertDcc = invertDccCheckbox.checked;
-                            this.updatePointsList();
-                        });
-                    }
+        // 名前変更イベントリスナー
+        const nameInput = container.querySelector(`.${type}-name`);
+        if (nameInput) {
+            nameInput.addEventListener('change', (e) => {
+                const newName = e.target.value.trim();
+                if (newName) {
+                    element.name = newName;
+                    this.canvas.draw();
                 }
-                break;
-
-            case 'lever':
-            case 'button':
-                // 線路再設定ボタン
-                const reassignBtn = document.getElementById('reassign-track');
-                if (reassignBtn) {
-                    reassignBtn.addEventListener('click', () => {
-                        this.startTrackReassignment(element, type);
-                    });
-                }
-
-                // 関連解除ボタン
-                const clearBtn = document.getElementById('clear-track');
-                if (clearBtn) {
-                    clearBtn.addEventListener('click', () => {
-                        element.trackId = null;
-                        this.updateSelectedProperties(element, type);
-                    });
-                }
-                break;
-
-            case 'insulation':
-                // 線路再設定ボタン
-                const reassignBtnI = document.getElementById('reassign-track');
-                if (reassignBtnI) {
-                    reassignBtnI.addEventListener('click', () => {
-                        this.startTrackReassignment(element, type);
-                    });
-                }
-                // 関連解除ボタン
-                const clearBtnI = document.getElementById('clear-track');
-                if (clearBtnI) {
-                    clearBtnI.addEventListener('click', () => {
-                        if (element.trackSegments && element.trackSegments.length > 0) {
-                            element.trackSegments[0].trackId = null;
-                        }
-                        this.updateSelectedProperties(element, type);
-                    });
-                }
-                break;
+            });
         }
+
+        // DCCアドレス変更（線路の場合）
+        if (type === 'track') {
+            const dccInput = container.querySelector('.dcc-address');
+            if (dccInput) {
+                dccInput.addEventListener('change', (e) => {
+                    const address = parseInt(e.target.value);
+                    if (!isNaN(address) && address >= 0) {
+                        element.dccAddress = address;
+                    }
+                });
+            }
+
+            const invertDcc = container.querySelector('.invert-dcc');
+            if (invertDcc) {
+                invertDcc.addEventListener('change', (e) => {
+                    element.invertDcc = e.target.checked;
+                });
+            }
+        }
+
+        // 線路再割り当てボタン
+        const reassignBtn = container.querySelector('.reassign-track');
+        if (reassignBtn) {
+            reassignBtn.addEventListener('click', () => {
+                this.startTrackReassignment(element, type);
+            });
+        }
+    }
+
+    // 線路タイプの表示名を取得
+    getTrackTypeName(type) {
+        return Track.prototype.getTrackTypeName(type);
+    }
+
+    // てこタイプの表示名を取得
+    getLeverTypeName(type) {
+        const typeNames = {
+            'signal': '信号てこ',
+            'shunting_signal': '入換てこ',
+            'shunting_marker': '標識てこ',
+            'through_lever': '開通てこ'
+        };
+        return typeNames[type] || type;
+    }
+
+    // 絶縁タイプの表示名を取得
+    getInsulationTypeName(type) {
+        const typeNames = {
+            'straight': '直線絶縁',
+            'cross': '絶縁クロス'
+        };
+        return typeNames[type] || type;
     }
 
     /**
