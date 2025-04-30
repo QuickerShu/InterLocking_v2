@@ -1281,6 +1281,7 @@ class RouteManager {
         // DFS探索用の内部関数
         const results = [];
         const visited = new Set(); // "trackId:endpointIndex" 形式
+        const trackPassCount = new Map(); // trackIdごとの通過回数を記録
         const pointStates = {};
 
         // 着点ボタンのtrackId, endpointIndexを取得
@@ -1309,7 +1310,17 @@ class RouteManager {
             console.log('[DFS] track.id:', track.id, 'epIdx:', epIdx, 'visited:', Array.from(visited));
             const key = `${track.id}:${epIdx}`;
             if (visited.has(key)) return;
+
+            // 線路の通過回数をカウント
+            const currentCount = trackPassCount.get(track.id) || 0;
+            // 目的地以外の線路で3回以上の通過は禁止
+            if (currentCount >= 2 && String(track.id) !== destTrackId) {
+                console.log(`[DFS] 線路${track.id}の通過回数が上限を超えたため探索中止`);
+                return;
+            }
+            
             visited.add(key);
+            trackPassCount.set(track.id, currentCount + 1);
 
             // ゴール判定: track.idがdestTrackIdならゴール（端点番号は問わない）
             if (String(track.id) === destTrackId) {
@@ -1459,6 +1470,13 @@ class RouteManager {
                 }
             }
             visited.delete(key);
+            // 通過回数を減らす
+            const count = trackPassCount.get(track.id);
+            if (count === 1) {
+                trackPassCount.delete(track.id);
+            } else {
+                trackPassCount.set(track.id, count - 1);
+            }
         };
 
         dfs(startTrack, startEpIdx, [], {});
