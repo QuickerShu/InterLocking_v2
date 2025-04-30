@@ -566,6 +566,20 @@ class App {
     
     // 連動要素を配置
     placeInterlockingElement(elementType) {
+        // --- 追加: 線路パーツボタンのアクティブ解除 ---
+        this.updateTrackPartButtonState(null);
+        // --- 追加: 連動要素ボタンのアクティブ化 ---
+        const interlockingButtonMap = {
+            signalLever: 'signalLeverBtn',
+            shuntingLever: 'shuntingLeverBtn',
+            markerLever: 'markerLeverBtn',
+            throughLever: 'throughLeverBtn',
+            destButton: 'destButtonBtn'
+        };
+        const btnId = interlockingButtonMap[elementType];
+        if (btnId) {
+            this.updateTrackPartButtonState(btnId);
+        }
         // すでに配置中の要素やプレビューがあればキャンセル・クリア
         if (this.isPlacingElement || this.interlockingManager.editModeState.selectedElement) {
             this.cancelElementPlacement();
@@ -718,6 +732,9 @@ class App {
                         
                         // 配置完了メッセージを表示
                         this.setStatusInfo(`${elementInfo.title}を線路に関連付けました。配置を継続できます。`);
+                        
+                        // --- ここでアクティブ解除 ---
+                        this.updateTrackPartButtonState(null);
                         
                         // 選択状態を解除
                         this.interlockingManager.editModeState.selectedElement = null;
