@@ -253,10 +253,8 @@ class InterlockingManager {
      * @param {MouseEvent} event 
      */
     handleMouseUp(event) {
-        // ドラッグ終了
         if (this.editModeState.isDragging) {
             this.editModeState.isDragging = false;
-            // ドラッグ終了時、必要に応じて線路IDを更新
             if (this.editModeState.selectedElement) {
                 const element = this.editModeState.selectedElement;
                 // 最も近い線路を見つけて関連付け
@@ -264,15 +262,18 @@ class InterlockingManager {
                     const nearestTrackId = window.app.getNearestTrackId(element.position);
                     if (nearestTrackId) {
                         element.trackId = nearestTrackId;
+                        // 追加: destinationButtons配列内の該当ボタンにもtrackIdを反映
+                        if (element.type === 'destButton' && Array.isArray(this.destinationButtons)) {
+                            const btn = this.destinationButtons.find(b => b.id === element.id);
+                            if (btn) btn.trackId = nearestTrackId;
+                        }
                     }
                 }
             }
-            // ドラッグ終了時に選択状態を必ず解除
-                    this.editModeState.selectedElement = null;
-                    this.editModeState.elementType = null;
+            this.editModeState.selectedElement = null;
+            this.editModeState.elementType = null;
             this.canvas.draw();
         } else {
-            // ドラッグ中でなくても、マウスアップ時は必ずドラッグ状態を解除
             this.editModeState.isDragging = false;
             this.editModeState.selectedElement = null;
             this.editModeState.elementType = null;
