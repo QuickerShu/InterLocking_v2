@@ -1204,16 +1204,39 @@ class RouteManager {
             // UI側でエラー表示すること
             return;
         }
+
         // てこ×着点ボタンの全組み合わせ
         for (const lever of startLevers) {
+            // てこに関連付けられた線路を取得
+            const leverTrack = this.interlockingManager.trackManager.getTrack(lever.trackId);
+            if (!leverTrack) continue;
+
             for (const button of destButtons) {
-                // てこに関連付けられた線路IDの両端点から探索
-                const track = this.interlockingManager.trackManager.getTrack(lever.trackId);
-                if (!track) continue;
-                // 着点trackの遠い端点を取得
+                // 同じ線路上のてこと着点ボタンはスキップ
+                if (lever.trackId === button.trackId) continue;
+
+                // 着点に関連付けられた線路を取得
                 const destTrack = this.interlockingManager.trackManager.getTrack(button.trackId);
+                if (!destTrack) continue;
+
+                // てこ側の端点を取得（てこから遠い方を使用）
+                let leverEpIdxFar = 0;
+                if (Array.isArray(leverTrack.endpoints) && leverTrack.endpoints.length >= 2) {
+                    let maxDist = -Infinity;
+                    leverTrack.endpoints.forEach((ep, idx) => {
+                        const dx = ep.x - lever.x;
+                        const dy = ep.y - lever.y;
+                        const dist = dx * dx + dy * dy;
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            leverEpIdxFar = idx;
+                        }
+                    });
+                }
+
+                // 着点側の端点を取得（着点から遠い方を使用）
                 let destEpIdxFar = 0;
-                if (destTrack && Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
+                if (Array.isArray(destTrack.endpoints) && destTrack.endpoints.length >= 2) {
                     let maxDist = -Infinity;
                     destTrack.endpoints.forEach((ep, idx) => {
                         const dx = ep.x - button.x;
@@ -1225,44 +1248,27 @@ class RouteManager {
                         }
                     });
                 }
-                // てこtrackの遠い端点を取得
-                let leverEpIdxFar = 0;
-                if (track && Array.isArray(track.endpoints) && track.endpoints.length >= 2) {
-                    let maxDist = -Infinity;
-                    track.endpoints.forEach((ep, idx) => {
-                        const dx = ep.x - lever.x;
-                        const dy = ep.y - lever.y;
-                        const dist = dx * dx + dy * dy;
-                        if (dist > maxDist) {
-                            maxDist = dist;
-                            leverEpIdxFar = idx;
-                        }
-                    });
-                }
-                // 遠い端点のみでDFS
-                const routes = this._findAllRoutesFromEndpoint(track, leverEpIdxFar, button, destEpIdxFar);
-                // 最短経路のみを候補に
-                let minLen = Infinity;
-                let bestRoute = null;
+
+                // 進路探索を実行
+                const routes = this._findAllRoutesFromEndpoint(leverTrack, leverEpIdxFar, button, destEpIdxFar);
+                console.log(`探索結果: てこ${lever.id}(線路${lever.trackId}) → ボタン${button.id}(線路${button.trackId}), 経路数: ${routes.length}`);
+
+                // 見つかった経路を候補に追加
                 for (const route of routes) {
-                    if (route.path.length < minLen) {
-                        minLen = route.path.length;
-                        bestRoute = route;
-                    }
-                }
-                if (bestRoute) {
                     this.routeCandidates.push({
                         startLever: lever,
                         destButton: button,
-                        path: bestRoute.path,
-                        pointStates: bestRoute.pointStates
+                        path: route.path,
+                        pointStates: route.pointStates
                     });
                 }
             }
         }
-        console.log('this.routeCandidates:', this.routeCandidates);
-        // --- 追加: routeCandidatesを自動的にroutesへ登録 ---
-        this.routeCandidates.forEach(candidate => {
+
+        console.log('生成された進路候補:', this.routeCandidates);
+
+        // routeCandidatesをroutesへ登録
+        this.routeCandidates.forEach((candidate, index) => {
             const route = new Route(
                 `${this.getLeverTypeName(candidate.startLever.type)} ${this.routes.size + 1}`,
                 candidate.startLever,
@@ -1286,6 +1292,13 @@ class RouteManager {
 
         // 着点ボタンのtrackId, endpointIndexを取得
         const destTrackId = String(destButton.trackId);
+
+        // てこと着点ボタンが同じ線路上にある場合は進路生成しない
+        if (String(startTrack.id) === destTrackId) {
+            console.log('[DFS] てこと着点ボタンが同じ線路上にあるため進路生成をスキップ');
+            return results;
+        }
+
         // 着点ボタンの端点indexを特定（最も近い端点と遠い端点の両方を取得）
         let destEpIdxNear = 0;
         if (destButton.x !== undefined && destButton.y !== undefined && startTrack.trackManager) {
@@ -1303,6 +1316,9 @@ class RouteManager {
                 });
             }
         }
+
+        // 両方向の進路を探索するため、着点の両端点を使用
+        const destEndpoints = [destEpIdxNear, destEpIdxFar];
 
         // DFS本体
         const dfs = (track, epIdx, path, pointStates) => {
@@ -1479,8 +1495,40 @@ class RouteManager {
             }
         };
 
-        dfs(startTrack, startEpIdx, [], {});
-        return results;
+        // 両方向の進路を探索
+        destEndpoints.forEach(destEp => {
+            // 探索状態をリセット
+            visited.clear();
+            trackPassCount.clear();
+            
+            // 探索開始
+            dfs(startTrack, startEpIdx, [], {});
+        });
+
+        // 重複する進路を除外（同じ経路で方向が異なるものは残す）
+        const uniqueResults = results.filter((route, index) => {
+            // 同じ経路で逆方向のものがあるか確認
+            const reverseRoute = results.find((r, i) => {
+                if (i === index) return false;
+                if (r.path.length !== route.path.length) return false;
+                
+                // 経路の端点が逆順で一致するか確認
+                for (let i = 0; i < route.path.length; i++) {
+                    const forward = route.path[i];
+                    const backward = r.path[route.path.length - 1 - i];
+                    if (forward.trackId !== backward.trackId) return false;
+                }
+                return true;
+            });
+
+            // 重複する逆方向の経路がある場合、インデックスが小さい方のみを残す
+            if (reverseRoute) {
+                return results.indexOf(reverseRoute) > index;
+            }
+            return true;
+        });
+
+        return uniqueResults;
     }
 
     showRouteCandidatesModal() {

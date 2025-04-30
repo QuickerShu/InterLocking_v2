@@ -1,13 +1,13 @@
 {
   "routes": [
     {
-      "id": "54e29481-0e90-4843-bb3d-280e38e23fa7",
+      "id": "90efb11b-7235-47c0-bba5-a3f118b2cb3f",
       "name": "signal 1",
       "lever": {
-        "id": "signalLever_1745932800302_108",
+        "id": "signalLever_1745974312513_292",
         "type": "signal",
-        "x": 120,
-        "y": 140,
+        "x": 200,
+        "y": 240,
         "trackId": 1,
         "state": "neutral",
         "selected": false,
@@ -19,13 +19,13 @@
         }
       },
       "destination": {
-        "id": "destButton_1745932806466_571",
+        "id": "destButton_1745974323442_190",
         "type": "destButton",
-        "x": 480,
-        "y": 160,
+        "x": 600,
+        "y": 180,
         "state": "normal",
         "routes": [],
-        "trackId": 3
+        "trackId": 4
       },
       "points": [
         {
@@ -34,34 +34,32 @@
         },
         {
           "trackId": 2,
-          "endpoint": 0,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "normal"
+          "endpoint": 2,
+          "direction": "reverse"
         },
         {
           "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 3,
+          "endpoint": 1
+        },
+        {
+          "trackId": 4,
           "endpoint": 0
         }
       ],
       "isAuto": true
     },
     {
-      "id": "a65bda10-851b-4540-9ae1-5844771c8899",
+      "id": "b88491df-c826-4759-8ba1-869747eb8b9a",
       "name": "signal 2",
       "lever": {
-        "id": "signalLever_1745932800302_108",
+        "id": "signalLever_1745974312513_292",
         "type": "signal",
-        "x": 120,
-        "y": 140,
+        "x": 200,
+        "y": 240,
         "trackId": 1,
         "state": "neutral",
         "selected": false,
@@ -73,10 +71,10 @@
         }
       },
       "destination": {
-        "id": "destButton_1745932808660_76",
+        "id": "destButton_1745974325942_726",
         "type": "destButton",
-        "x": 440,
-        "y": 300,
+        "x": 600,
+        "y": 240,
         "state": "normal",
         "routes": [],
         "trackId": 5
@@ -88,139 +86,10 @@
         },
         {
           "trackId": 2,
-          "endpoint": 0,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3
-        },
-        {
-          "trackId": 6,
-          "endpoint": 1
-        },
-        {
-          "trackId": 6,
-          "endpoint": 1
-        },
-        {
-          "trackId": 5,
-          "endpoint": 0
-        }
-      ],
-      "isAuto": true
-    },
-    {
-      "id": "d2e70053-b152-4851-9617-fd10450ee7e7",
-      "name": "signal 3",
-      "lever": {
-        "id": "signalLever_1745932803644_385",
-        "type": "signal",
-        "x": 140,
-        "y": 200,
-        "trackId": 4,
-        "state": "neutral",
-        "selected": false,
-        "routes": [],
-        "animation": {
-          "blink": false,
-          "blinkCount": 0,
-          "active": false
-        }
-      },
-      "destination": {
-        "id": "destButton_1745932806466_571",
-        "type": "destButton",
-        "x": 480,
-        "y": 160,
-        "state": "normal",
-        "routes": [],
-        "trackId": 3
-      },
-      "points": [
-        {
-          "trackId": 4,
           "endpoint": 1
         },
         {
           "trackId": 2,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 3,
-          "endpoint": 0
-        }
-      ],
-      "isAuto": true
-    },
-    {
-      "id": "1275230e-1dc3-40ab-8583-63d619bd9c3e",
-      "name": "signal 4",
-      "lever": {
-        "id": "signalLever_1745932803644_385",
-        "type": "signal",
-        "x": 140,
-        "y": 200,
-        "trackId": 4,
-        "state": "neutral",
-        "selected": false,
-        "routes": [],
-        "animation": {
-          "blink": false,
-          "blinkCount": 0,
-          "active": false
-        }
-      },
-      "destination": {
-        "id": "destButton_1745932808660_76",
-        "type": "destButton",
-        "x": 440,
-        "y": 300,
-        "state": "normal",
-        "routes": [],
-        "trackId": 5
-      },
-      "points": [
-        {
-          "trackId": 4,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3
-        },
-        {
-          "trackId": 6,
-          "endpoint": 1
-        },
-        {
-          "trackId": 6,
           "endpoint": 1
         },
         {
@@ -234,10 +103,10 @@
   "routeCandidates": [
     {
       "startLever": {
-        "id": "signalLever_1745932800302_108",
+        "id": "signalLever_1745974312513_292",
         "type": "signal",
-        "x": 120,
-        "y": 140,
+        "x": 200,
+        "y": 240,
         "trackId": 1,
         "state": "neutral",
         "selected": false,
@@ -249,13 +118,13 @@
         }
       },
       "destButton": {
-        "id": "destButton_1745932806466_571",
+        "id": "destButton_1745974323442_190",
         "type": "destButton",
-        "x": 480,
-        "y": 160,
+        "x": 600,
+        "y": 180,
         "state": "normal",
         "routes": [],
-        "trackId": 3
+        "trackId": 4
       },
       "path": [
         {
@@ -264,82 +133,19 @@
         },
         {
           "trackId": 2,
-          "endpoint": 0,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "normal"
-        },
-        {
-          "trackId": 3,
-          "endpoint": 0
-        }
-      ],
-      "pointStates": {
-        "2": "normal"
-      }
-    },
-    {
-      "startLever": {
-        "id": "signalLever_1745932800302_108",
-        "type": "signal",
-        "x": 120,
-        "y": 140,
-        "trackId": 1,
-        "state": "neutral",
-        "selected": false,
-        "routes": [],
-        "animation": {
-          "blink": false,
-          "blinkCount": 0,
-          "active": false
-        }
-      },
-      "destButton": {
-        "id": "destButton_1745932808660_76",
-        "type": "destButton",
-        "x": 440,
-        "y": 300,
-        "state": "normal",
-        "routes": [],
-        "trackId": 5
-      },
-      "path": [
-        {
-          "trackId": 1,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 0,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3,
+          "endpoint": 2,
           "direction": "reverse"
         },
         {
-          "trackId": 2,
-          "endpoint": 3
-        },
-        {
-          "trackId": 6,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 6,
+          "trackId": 3,
           "endpoint": 1
         },
         {
-          "trackId": 5,
+          "trackId": 4,
           "endpoint": 0
         }
       ],
@@ -347,11 +153,11 @@
     },
     {
       "startLever": {
-        "id": "signalLever_1745932803644_385",
+        "id": "signalLever_1745974312513_292",
         "type": "signal",
-        "x": 140,
-        "y": 200,
-        "trackId": 4,
+        "x": 200,
+        "y": 240,
+        "trackId": 1,
         "state": "neutral",
         "selected": false,
         "routes": [],
@@ -362,93 +168,25 @@
         }
       },
       "destButton": {
-        "id": "destButton_1745932806466_571",
+        "id": "destButton_1745974325942_726",
         "type": "destButton",
-        "x": 480,
-        "y": 160,
-        "state": "normal",
-        "routes": [],
-        "trackId": 3
-      },
-      "path": [
-        {
-          "trackId": 4,
-          "endpoint": 1
-        },
-        {
-          "trackId": 2,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 1,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 3,
-          "endpoint": 0
-        }
-      ],
-      "pointStates": {
-        "2": "reverse"
-      }
-    },
-    {
-      "startLever": {
-        "id": "signalLever_1745932803644_385",
-        "type": "signal",
-        "x": 140,
-        "y": 200,
-        "trackId": 4,
-        "state": "neutral",
-        "selected": false,
-        "routes": [],
-        "animation": {
-          "blink": false,
-          "blinkCount": 0,
-          "active": false
-        }
-      },
-      "destButton": {
-        "id": "destButton_1745932808660_76",
-        "type": "destButton",
-        "x": 440,
-        "y": 300,
+        "x": 600,
+        "y": 240,
         "state": "normal",
         "routes": [],
         "trackId": 5
       },
       "path": [
         {
-          "trackId": 4,
+          "trackId": 1,
           "endpoint": 1
         },
         {
           "trackId": 2,
-          "endpoint": 2,
-          "direction": "reverse"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3,
-          "direction": "normal"
-        },
-        {
-          "trackId": 2,
-          "endpoint": 3
-        },
-        {
-          "trackId": 6,
           "endpoint": 1
         },
         {
-          "trackId": 6,
+          "trackId": 2,
           "endpoint": 1
         },
         {
@@ -465,12 +203,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 100,
-          "y": 140
+          "x": 160,
+          "y": 240
         },
         {
-          "x": 200,
-          "y": 140
+          "x": 380,
+          "y": 240
         }
       ],
       "connections": [
@@ -491,23 +229,19 @@
     },
     {
       "id": 2,
-      "type": "double_cross",
+      "type": "point_left",
       "endpoints": [
         {
-          "x": 200,
-          "y": 140
+          "x": 380,
+          "y": 240
         },
         {
-          "x": 280,
-          "y": 140
+          "x": 460,
+          "y": 240
         },
         {
-          "x": 200,
-          "y": 180
-        },
-        {
-          "x": 280,
-          "y": 180
+          "x": 420,
+          "y": 220
         }
       ],
       "connections": [
@@ -519,23 +253,16 @@
           }
         ],
         [
-          1,
+          2,
           {
             "trackId": 3,
             "endpointIndex": 0
           }
         ],
         [
-          2,
+          1,
           {
-            "trackId": 4,
-            "endpointIndex": 1
-          }
-        ],
-        [
-          3,
-          {
-            "trackId": 6,
+            "trackId": 5,
             "endpointIndex": 0
           }
         ]
@@ -552,12 +279,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 280,
-          "y": 140
+          "x": 420,
+          "y": 220
         },
         {
           "x": 500,
-          "y": 160
+          "y": 180
         }
       ],
       "connections": [
@@ -565,7 +292,14 @@
           0,
           {
             "trackId": 2,
-            "endpointIndex": 1
+            "endpointIndex": 2
+          }
+        ],
+        [
+          1,
+          {
+            "trackId": 4,
+            "endpointIndex": 0
           }
         ]
       ],
@@ -581,20 +315,20 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 120,
-          "y": 220
+          "x": 500,
+          "y": 180
         },
         {
-          "x": 200,
+          "x": 760,
           "y": 180
         }
       ],
       "connections": [
         [
-          1,
+          0,
           {
-            "trackId": 2,
-            "endpointIndex": 2
+            "trackId": 3,
+            "endpointIndex": 1
           }
         ]
       ],
@@ -610,41 +344,12 @@
       "type": "straight",
       "endpoints": [
         {
-          "x": 300,
-          "y": 200
+          "x": 460,
+          "y": 240
         },
         {
-          "x": 480,
-          "y": 320
-        }
-      ],
-      "connections": [
-        [
-          0,
-          {
-            "trackId": 6,
-            "endpointIndex": 1
-          }
-        ]
-      ],
-      "status": "ROUTE",
-      "isPoint": false,
-      "pointDirection": "normal",
-      "dccAddress": 0,
-      "invertDcc": false,
-      "visible": true
-    },
-    {
-      "id": 6,
-      "type": "straight",
-      "endpoints": [
-        {
-          "x": 280,
-          "y": 180
-        },
-        {
-          "x": 300,
-          "y": 200
+          "x": 760,
+          "y": 240
         }
       ],
       "connections": [
@@ -652,14 +357,7 @@
           0,
           {
             "trackId": 2,
-            "endpointIndex": 3
-          }
-        ],
-        [
-          1,
-          {
-            "trackId": 5,
-            "endpointIndex": 0
+            "endpointIndex": 1
           }
         ]
       ],
