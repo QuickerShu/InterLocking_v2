@@ -107,7 +107,7 @@ class Track {
                     { x: snapToGrid(x - 2 * gridSize), y: snapToGrid(y + gridSize) }, // 左下
                     { x: snapToGrid(x + 2 * gridSize), y: snapToGrid(y + gridSize) }  // 右下
                 ];
-                if (!track.pointDirection) track.pointDirection = 'normal';
+                track.pointDirection = 'straight';
                 break;
             case 'double_slip_x':
                 track.endpoints = [
@@ -237,7 +237,7 @@ class Track {
             console.error('無効なポイント方向:', direction);
             return false;
         }
-        console.log(`[setPointDirection] track.id=${this.id}, type=${this.type}, direction=${direction}（変更前: ${this.pointDirection}）`);
+        console.log(`[DEBUG:setPointDirection] called: trackId=${this.id}, type=${this.type}, direction=${direction}, before=${this.pointDirection}`);
         // DCCアドレスがある場合は制御コマンドを送信
         if (this.dccAddress && window.app && window.app.isDSAirConnected) {
             try {
@@ -258,7 +258,7 @@ class Track {
         }
         // ポイント方向を更新（DSAirの成功/失敗に関わらず常に更新）
         this.pointDirection = direction;
-        console.log(`[setPointDirection] track.id=${this.id} のpointDirectionが ${this.pointDirection} になりました`);
+        console.log(`[DEBUG:setPointDirection] after: trackId=${this.id}, type=${this.type}, pointDirection=${this.pointDirection}`);
         return true;
     }
 
@@ -269,6 +269,23 @@ class Track {
     async togglePointDirection() {
         const newDirection = this.pointDirection === 'normal' ? 'reverse' : 'normal';
         return await this.setPointDirection(newDirection);
+    }
+
+    /**
+     * ダブルクロスの方向を設定
+     * @param {string} direction - 'straight'または'cross'
+     * @returns {Promise<boolean>} 成功したかどうか
+     */
+    async setCrossDirection(direction) {
+        if (this.type !== 'double_cross') return false;
+        if (direction !== 'straight' && direction !== 'cross') {
+            console.error('無効なダブルクロス方向:', direction);
+            return false;
+        }
+        console.log(`[DEBUG:setCrossDirection] called: trackId=${this.id}, type=${this.type}, direction=${direction}, before=${this.pointDirection}`);
+        this.pointDirection = direction;
+        console.log(`[DEBUG:setCrossDirection] after: trackId=${this.id}, pointDirection=${this.pointDirection}`);
+        return true;
     }
 
     // JSONに変換
@@ -296,7 +313,11 @@ class Track {
         track.connections = new Map(data.connections || []);
         track.status = data.status || 'normal';
         track.isPoint = data.isPoint || false;
-        track.pointDirection = data.pointDirection || 'normal';
+        if (data.type === 'double_cross') {
+            track.pointDirection = data.pointDirection || 'straight';
+        } else {
+            track.pointDirection = data.pointDirection || 'normal';
+        }
         track.dccAddress = data.dccAddress || null;
         track.invertDcc = data.invertDcc || false;
         track.visible = data.visible !== undefined ? data.visible : true;

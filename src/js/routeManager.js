@@ -912,6 +912,48 @@ class RouteManager {
             }
             // status/directionの設定
             if (route.points && Array.isArray(route.points)) {
+                // --- 追加: 多端点trackの通過ペアに応じた物理方向自動設定 ---
+                // 1. 経路上のtrack内移動stepを抽出
+                const multiTrackPairs = [];
+                for (let i = 0; i < route.points.length - 1; i++) {
+                    const [curTrackId, curEpIdx] = route.points[i].trackId ? [route.points[i].trackId, route.points[i].endpoint] : [route.points[i].id, route.points[i].endpoint];
+                    const [nextTrackId, nextEpIdx] = route.points[i + 1].trackId ? [route.points[i + 1].trackId, route.points[i + 1].endpoint] : [route.points[i + 1].id, route.points[i + 1].endpoint];
+                    // trackIdが同じで端点が異なる場合（track内移動）はスキップ
+                    if (curTrackId === nextTrackId) continue;
+                    // curTrackIdのto=curEpIdx, nextTrackIdのfrom=nextEpIdx
+                    // ここで「多端点track」の場合のみペアを記録
+                    const curTrack = this.interlockingManager.trackManager.getTrack(curTrackId);
+                    if (curTrack && (curTrack.type === 'double_cross' || curTrack.type === 'double_slip_x')) {
+                        // from: 直前の端点, to: 今回の端点
+                        multiTrackPairs.push({
+                            track: curTrack,
+                            from: curEpIdx,
+                            to: nextEpIdx
+                        });
+                    }
+                }
+                console.log('[DEBUG:activateRoute] multiTrackPairs:', multiTrackPairs);
+                for (const pair of multiTrackPairs) {
+                    const {track, from, to} = pair;
+                    if (track.type === 'double_cross') {
+                        let dir = null;
+                        if ((from === 0 && to === 1) || (from === 1 && to === 0) || (from === 2 && to === 3) || (from === 3 && to === 2)) {
+                            dir = 'straight';
+                        } else if ((from === 0 && to === 3) || (from === 3 && to === 0) || (from === 1 && to === 2) || (from === 2 && to === 1)) {
+                            dir = 'cross';
+                        }
+                        console.log(`[DEBUG:activateRoute] setCrossDirection: trackId=${track.id}, type=${track.type}, from=${from}, to=${to}, dir=${dir}`);
+                        if (dir && track.setCrossDirection) {
+                            await track.setCrossDirection(dir);
+                        }
+                    } else if (track.isPoint) {
+                        const dir = lastDirectionByPoint[track.id] || 'normal';
+                        if (track.setPointDirection) {
+                            await track.setPointDirection(dir);
+                        }
+                    }
+                }
+                // --- 既存の分岐器direction設定も維持 ---
                 for (let idx = 0; idx < route.points.length; idx++) {
                     const step = route.points[idx];
                     let track = null;
@@ -924,10 +966,15 @@ class RouteManager {
                     if (track) {
                         track.setStatus && track.setStatus('ROUTE');
                         if (track.isPoint) {
-                            // 分岐器は「最後の出口stepのdirection」だけを採用
-                            const dir = lastDirectionByPoint[trackId] || 'normal';
-                            if (track.setPointDirection) {
-                                await track.setPointDirection(dir);
+                            if (track.type === 'double_cross') {
+                                // すでにsetCrossDirectionで設定済みなので何もしない
+                                console.log(`[DEBUG:activateRoute] skip setPointDirection for double_cross: trackId=${track.id}`);
+                            } else {
+                                const dir = lastDirectionByPoint[trackId] || 'normal';
+                                console.log(`[DEBUG:activateRoute] setPointDirection: trackId=${track.id}, type=${track.type}, dir=${dir}`);
+                                if (track.setPointDirection) {
+                                    await track.setPointDirection(dir);
+                                }
                             }
                         }
                     }

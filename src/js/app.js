@@ -1656,7 +1656,7 @@ class App {
     selectedRouteDestButton = null;
 
     // トラックのクリック処理
-    handleTrackClick(track, event) {
+    async handleTrackClick(track, event) {
         // --- 進路選択処理（操作モード時） ---
         if (this.appMode === 'operation') {
             const mousePos = this.getScaledMousePosition(event);
@@ -1708,12 +1708,17 @@ class App {
             }
             // --- 分岐器・ダブルクロス・ダブルスリップクリックで開通方向を切り替え ---
             if (track && track.type && (track.type.startsWith('point_') || track.type === 'double_cross' || track.type === 'double_slip_x')) {
-                const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
-                this.trackManager.switchPoint(track.id, newDirection);
-                let typeLabel = 'ポイント';
-                if (track.type === 'double_cross') typeLabel = 'ダブルクロス';
-                if (track.type === 'double_slip_x') typeLabel = 'ダブルスリップ';
-                this.setStatusInfo(`${typeLabel}ID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                if (track.type === 'double_cross') {
+                    const newDirection = track.pointDirection === 'straight' ? 'cross' : 'straight';
+                    if (track.setCrossDirection) await track.setCrossDirection(newDirection);
+                    this.setStatusInfo(`ダブルクロスID:${track.id} を${newDirection === 'straight' ? '直進' : 'クロス'}に切り替えました`);
+                } else {
+                    const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                    this.trackManager.switchPoint(track.id, newDirection);
+                    let typeLabel = 'ポイント';
+                    if (track.type === 'double_slip_x') typeLabel = 'ダブルスリップ';
+                    this.setStatusInfo(`${typeLabel}ID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                }
                 this.canvas.draw();
                 return;
             }
