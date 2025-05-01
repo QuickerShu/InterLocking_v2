@@ -827,19 +827,22 @@ class RouteManager {
     async activateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
-
-            if (route.isActive) {
-                route.deactivate();
-                this.activeRoutes.delete(route);
+        // --- 追加: route.pointsの内容をデバッグ出力 ---
+        if (route.points && Array.isArray(route.points)) {
+            console.log('[DEBUG:activateRoute] route.points:', route.points.map(s => ({trackId: s.trackId, endpoint: s.endpoint, from: s.from, to: s.to})));
+        }
+        if (route.isActive) {
+            route.deactivate();
+            this.activeRoutes.delete(route);
             this.resetAllTracksStatus(); // 進路解除ボタンで全線路をnormalに
             this.updateRouteList();
             return;
         }
 
-                // 競合チェック
+        // 競合チェック
         const conflicts = [];
-                this.activeRoutes.forEach(activeRoute => {
-                    if (this.checkRouteConflict(route, activeRoute)) {
+        this.activeRoutes.forEach(activeRoute => {
+            if (this.checkRouteConflict(route, activeRoute)) {
                 conflicts.push(activeRoute);
             }
         });
@@ -889,19 +892,26 @@ class RouteManager {
             // 経路内線分を記録
             const routeSegmentsByTrack = {};
             if (route.points && Array.isArray(route.points)) {
-                // ダブルクロスやポイントの線分を特定
                 for (let idx = 0; idx < route.points.length - 1; idx++) {
                     const step = route.points[idx];
                     const nextStep = route.points[idx + 1];
                     const trackId = step.trackId || step.id;
                     const nextTrackId = nextStep.trackId || nextStep.id;
-                    if (trackId === nextTrackId) {
-                        // 同じtrack内の移動（ダブルクロスやポイントの通過）
-                        if (!routeSegmentsByTrack[trackId]) routeSegmentsByTrack[trackId] = {in: [], out: []};
-                        routeSegmentsByTrack[trackId].in.push({from: step.endpoint, to: nextStep.endpoint, direction: step.direction || nextStep.direction});
+                    // 同じtrack内の端点間移動を検出
+                    if (
+                        trackId === nextTrackId &&
+                        step.endpoint != null && nextStep.endpoint != null &&
+                        step.endpoint !== nextStep.endpoint
+                    ) {
+                        if (!routeSegmentsByTrack[trackId]) routeSegmentsByTrack[trackId] = { in: [], out: [] };
+                        routeSegmentsByTrack[trackId].in.push({
+                            from: step.endpoint,
+                            to: nextStep.endpoint
+                        });
                     }
                 }
             }
+            console.log('[DEBUG:activateRoute] routeSegmentsByTrack:', routeSegmentsByTrack);
             // 全trackにrouteSegmentsをセット
             for (const t of (typeof tracks.values === 'function' ? tracks.values() : Object.values(tracks))) {
                 if (routeSegmentsByTrack[t.id]) {
@@ -912,24 +922,32 @@ class RouteManager {
             }
             // status/directionの設定
             if (route.points && Array.isArray(route.points)) {
-                // --- 追加: 多端点trackの通過ペアに応じた物理方向自動設定 ---
-                // 1. 経路上のtrack内移動stepを抽出
+                // 進路上の多端点trackの通過ペアを抽出
                 const multiTrackPairs = [];
-                for (let i = 0; i < route.points.length - 1; i++) {
-                    const [curTrackId, curEpIdx] = route.points[i].trackId ? [route.points[i].trackId, route.points[i].endpoint] : [route.points[i].id, route.points[i].endpoint];
-                    const [nextTrackId, nextEpIdx] = route.points[i + 1].trackId ? [route.points[i + 1].trackId, route.points[i + 1].endpoint] : [route.points[i + 1].id, route.points[i + 1].endpoint];
-                    // trackIdが同じで端点が異なる場合（track内移動）はスキップ
-                    if (curTrackId === nextTrackId) continue;
-                    // curTrackIdのto=curEpIdx, nextTrackIdのfrom=nextEpIdx
-                    // ここで「多端点track」の場合のみペアを記録
-                    const curTrack = this.interlockingManager.trackManager.getTrack(curTrackId);
-                    if (curTrack && (curTrack.type === 'double_cross' || curTrack.type === 'double_slip_x')) {
-                        // from: 直前の端点, to: 今回の端点
-                        multiTrackPairs.push({
-                            track: curTrack,
-                            from: curEpIdx,
-                            to: nextEpIdx
-                        });
+                for (let idx = 0; idx < route.points.length - 1; idx++) {
+                    const step = route.points[idx];
+                    const nextStep = route.points[idx + 1];
+                    const trackId = step.trackId || step.id;
+                    const nextTrackId = nextStep.trackId || nextStep.id;
+                    if (
+                        trackId === nextTrackId &&
+                        step.endpoint != null && nextStep.endpoint != null &&
+                        step.endpoint !== nextStep.endpoint
+                    ) {
+                        // 多端点trackのみ
+                        const track = this.interlockingManager.trackManager.getTrack(trackId);
+                        if (track && (
+                            track.type === 'double_cross' ||
+                            track.type === 'double_slip_x' ||
+                            (track.type && track.type.startsWith('point_'))
+                        )) {
+                            multiTrackPairs.push({
+                                trackId,
+                                from: step.endpoint,
+                                to: nextStep.endpoint,
+                                type: track.type
+                            });
+                        }
                     }
                 }
                 console.log('[DEBUG:activateRoute] multiTrackPairs:', multiTrackPairs);
@@ -985,8 +1003,8 @@ class RouteManager {
 
         route.activate();
         this.activeRoutes.add(route);
-            this.updateRouteList();
-        }
+        this.updateRouteList();
+    }
 
     showConflictModal(conflicts) {
         return new Promise(resolve => {
@@ -1136,13 +1154,27 @@ class RouteManager {
         // DFS本体
         const dfs = (track, epIdx, path, trackVisited, pairVisited) => {
             const trackId = String(track.id);
-            // 多端点trackかどうか
             const isMulti = (track.type === 'double_cross' || track.type === 'double_slip_x' || (track.type && track.type.startsWith('point_')));
-            // 直前のpathからfromEpIdxを取得
-            const prev = path.length > 0 ? path[path.length-1] : null;
-            let pairKey = null;
-            if (isMulti && prev && prev.trackId === trackId) {
-                pairKey = `${trackId}:${prev.endpoint}->${epIdx}`;
+            const prevStep = path.length > 0 ? path[path.length - 1] : null;
+            const prevTrackId = prevStep ? prevStep.trackId : null;
+            const prevEpIdx = prevStep ? prevStep.endpoint : null;
+
+            // 以前のロジックに戻す: 必要なときだけpush
+            if (!prevStep || prevTrackId !== trackId || prevEpIdx !== epIdx) {
+                path.push({ trackId, endpoint: epIdx });
+            }
+
+            // ゴール判定
+            if (trackId === destTrackId && epIdx === destEpIdxFar) {
+                results.push({ path: [...path] });
+                if (isMulti && prevTrackId) pairVisited.delete(`${prevTrackId}:${prevEpIdx}->${epIdx}`);
+                else trackVisited.delete(trackId);
+                return;
+            }
+
+            // 多端点trackかどうか
+            if (isMulti && prevTrackId && prevTrackId === trackId) {
+                const pairKey = `${trackId}:${prevEpIdx}->${epIdx}`;
                 // 既にこのtrackで別ペアを通過していたらNG
                 const usedPairs = Array.from(pairVisited).filter(k => k.startsWith(trackId+':'));
                 if (usedPairs.length > 0 && !usedPairs.includes(pairKey)) {
@@ -1163,15 +1195,7 @@ class RouteManager {
                 trackVisited.add(trackId);
             }
             console.debug(`[DFS:ENTER] trackId=${trackId} epIdx=${epIdx} trackVisited=`, Array.from(trackVisited), 'pairVisited=', Array.from(pairVisited), 'path=', path.map(p => `${p.trackId}:${p.endpoint}`));
-            // ゴール判定
-            if (trackId === destTrackId && epIdx === destEpIdxFar) {
-                console.debug(`[DFS:GOAL] path=`, [...path, { trackId, endpoint: epIdx }].map(p => `${p.trackId}:${p.endpoint}`));
-                results.push({ path: [...path, { trackId, endpoint: epIdx }] });
-                if (isMulti && pairKey) pairVisited.delete(pairKey);
-                else trackVisited.delete(trackId);
-                return;
-            }
-            // track内端点間移動
+            // track内移動
             for (const nextEpIdx of getInternalMovableEndpoints(track, epIdx)) {
                 if (nextEpIdx === epIdx) continue;
                 dfs(track, nextEpIdx, [...path, { trackId, endpoint: nextEpIdx }], trackVisited, pairVisited);
@@ -1180,13 +1204,13 @@ class RouteManager {
             for (const conn of getConnections(track, epIdx)) {
                 const nextTrack = trackElements.find(t => String(t.id) === String(conn.trackId));
                 if (!nextTrack) continue;
-                dfs(nextTrack, conn.endpointIndex, [...path, { trackId: nextTrack.id, endpoint: conn.endpointIndex }], trackVisited, pairVisited);
+                dfs(nextTrack, conn.endpointIndex, path, trackVisited, pairVisited);
             }
-            if (isMulti && pairKey) pairVisited.delete(pairKey);
+            if (isMulti && prevTrackId) pairVisited.delete(`${prevTrackId}:${prevEpIdx}->${epIdx}`);
             else trackVisited.delete(trackId);
         };
         // DFS探索開始
-        dfs(startTrack, startEpIdx, [{ trackId: startTrack.id, endpoint: startEpIdx }], new Set(), new Set());
+        dfs(startTrack, startEpIdx, [{ trackId: startTrack.id, endpoint: startEpIdx, from: startEpIdx, to: startEpIdx }], new Set(), new Set());
         // pathの両端が正しい端点かチェック
         const unique = [];
         const seen = new Set();
