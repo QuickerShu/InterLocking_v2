@@ -847,7 +847,7 @@ class InterlockingManager {
      * 発点てこを追加
      */
     addStartLever(options) {
-        const { id, type, x, y, trackId } = options;
+        const { id, type, x, y, trackId, endpointIndex } = options;
         
         // 既存のIDチェック
         if (this.startLevers.some(lever => lever.id === id)) {
@@ -856,6 +856,8 @@ class InterlockingManager {
         
         // てこの作成
         const lever = new StartLever(id, type, x, y, trackId, this.getNextNumber(type));
+        lever.endpointIndex = endpointIndex;
+        console.log('[DEBUG:addStartLever] options.endpointIndex:', endpointIndex, '-> lever.endpointIndex:', lever.endpointIndex);
         
         // コレクションに追加
         this.startLevers.push(lever);
@@ -870,7 +872,7 @@ class InterlockingManager {
      * 着点ボタンを追加
      */
     addDestinationButton(options) {
-        const { id, x, y, trackId } = options;
+        const { id, x, y, trackId, endpointIndex } = options;
         
         // 既存のIDチェック
         if (this.destinationButtons.some(button => button.id === id)) {
@@ -879,6 +881,8 @@ class InterlockingManager {
         
         // ボタンの作成
         const button = new DestinationButton(id, { x, y }, trackId, this.getNextNumber('destButton'));
+        button.endpointIndex = endpointIndex;
+        console.log('[DEBUG:addDestinationButton] options.endpointIndex:', endpointIndex, '-> button.endpointIndex:', button.endpointIndex);
         
         // コレクションに追加
         this.destinationButtons.push(button);
