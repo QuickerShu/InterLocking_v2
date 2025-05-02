@@ -301,6 +301,8 @@ class RouteManager {
                         const tracks = window.app.trackManager.tracks;
                         if (typeof tracks.get === 'function') {
                             track = tracks.get(step.trackId);
+                            if (!track && typeof step.trackId === 'string') track = tracks.get(Number(step.trackId));
+                            if (!track && typeof step.trackId === 'number') track = tracks.get(String(step.trackId));
                         } else if (typeof tracks === 'object') {
                             track = tracks[step.trackId] || tracks[Number(step.trackId)];
                         }
@@ -519,6 +521,11 @@ class RouteManager {
     activateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
+        // デバッグ: てこtrackId, 経路stepのtrackId一覧
+        const leverTrackId = route.lever?.trackId;
+        console.log('[DEBUG] てこtrackId:', leverTrackId);
+        const stepTrackIds = (route.points || []).map(s => s.trackId);
+        console.log('[DEBUG] 経路stepのtrackId一覧:', stepTrackIds);
         // まず全進路を解除（単純化のため）
         this.routes.forEach(r => { if (r.isActive) this.deactivateRoute(r.id); });
         // 経路上のTrackを進路色・分岐器directionに
@@ -528,16 +535,26 @@ class RouteManager {
                 const tracks = window.app.trackManager.tracks;
                 if (typeof tracks.get === 'function') {
                     track = tracks.get(step.trackId);
+                    if (!track && typeof step.trackId === 'string') track = tracks.get(Number(step.trackId));
+                    if (!track && typeof step.trackId === 'number') track = tracks.get(String(step.trackId));
                 } else if (typeof tracks === 'object') {
                     track = tracks[step.trackId] || tracks[Number(step.trackId)];
                 }
             }
-            if (!track) return;
+            console.log(`[DEBUG] stepIdx=${idx} step.trackId=${step.trackId} track=`, track);
+            if (!track) {
+                console.warn(`[DEBUG] trackId=${step.trackId} のtrackが取得できません`);
+                return;
+            }
             // 線路色: 進路中
             track.status = 'ROUTE';
+            console.log(`[DEBUG] trackId=${step.trackId} のstatusをROUTEに設定`, track);
+            // デバッグ: てこtrackIdと一致する場合は明示的に出力
+            if (String(step.trackId) === String(leverTrackId)) {
+                console.log(`[DEBUG] てこtrackId(${leverTrackId})と一致: stepIdx=${idx}, track=`, track);
+            }
             // 分岐器・ダブルクロス等のdirection自動判定
             if (track.isPoint) {
-                // from/to端点ペアからdirectionを判定
                 const from = step.fromEpIdx;
                 const to = step.toEpIdx;
                 if (track.type === 'point_left' || track.type === 'point_right') {
@@ -548,14 +565,14 @@ class RouteManager {
                     else if ((from === 0 && to === 3) || (from === 3 && to === 0) || (from === 1 && to === 2) || (from === 2 && to === 1)) track.pointDirection = 'cross';
                 }
             }
-            // ダブルクロス等のrouteSegmentsもセット（描画用）
             if (track.type === 'double_cross' || track.type === 'double_slip_x') {
                 if (!track.routeSegments) track.routeSegments = { in: [] };
                 track.routeSegments.in.push({ from: step.fromEpIdx, to: step.toEpIdx });
             }
+            // デバッグ: track.status
+            console.log(`[DEBUG] trackId=${step.trackId} のstatus:`, track.status);
         });
         route.isActive = true;
-        // 再描画
         if (window.app && window.app.canvas) window.app.canvas.draw();
     }
 
