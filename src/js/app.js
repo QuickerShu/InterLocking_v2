@@ -434,6 +434,78 @@ class App {
         });
         const toolbar = document.getElementById('toolbar');
         if (toolbar) toolbar.appendChild(debugBtn);
+
+        // 進路全消去ボタンを追加
+        let clearRoutesBtn = document.getElementById('clearRoutesBtn');
+        if (!clearRoutesBtn) {
+            clearRoutesBtn = document.createElement('button');
+            clearRoutesBtn.id = 'clearRoutesBtn';
+            clearRoutesBtn.textContent = '進路全消去';
+            clearRoutesBtn.title = '登録された進路（routes）を全て削除';
+            this.toolbar.appendChild(clearRoutesBtn);
+        }
+        clearRoutesBtn.addEventListener('click', () => {
+            if (window.routeManager) {
+                if (confirm('本当に全ての進路を削除しますか？')) {
+                    window.routeManager.clearRoutes();
+                    window.routeManager.updateRouteList && window.routeManager.updateRouteList();
+                    this.setStatusInfo('全ての進路を削除しました');
+                }
+            }
+        });
+
+        // レイアウト読込ボタンを追加
+        let importLayoutBtn = document.getElementById('importLayoutBtn');
+        if (!importLayoutBtn) {
+            importLayoutBtn = document.createElement('button');
+            importLayoutBtn.id = 'importLayoutBtn';
+            importLayoutBtn.textContent = 'レイアウト読込';
+            importLayoutBtn.title = 'レイアウトデータ(JSON)を読み込む';
+            this.toolbar.appendChild(importLayoutBtn);
+        }
+        importLayoutBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,application/json';
+            input.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (ev) => {
+                    try {
+                        const json = ev.target.result;
+                        const data = JSON.parse(json);
+                        // トラック
+                        if (data.tracks && window.app.trackManager) {
+                            window.app.trackManager.tracks.clear && window.app.trackManager.tracks.clear();
+                            data.tracks.forEach(trackData => {
+                                const track = window.app.trackManager.constructor.Track ? window.app.trackManager.constructor.Track.fromJSON(trackData) : null;
+                                if (track) window.app.trackManager.tracks.set(track.id, track);
+                            });
+                        }
+                        // 連動要素
+                        if (window.app.interlockingManager && typeof window.app.interlockingManager.importData === 'function') {
+                            window.app.interlockingManager.importData(data);
+                        }
+                        // 進路(routes)
+                        if (data.routes && window.routeManager) {
+                            window.routeManager.clearRoutes && window.routeManager.clearRoutes();
+                            data.routes.forEach(routeData => {
+                                const route = window.routeManager.constructor.Route ? window.routeManager.constructor.Route.fromJSON(routeData) : null;
+                                if (route) window.routeManager.addRoute(route);
+                            });
+                            window.routeManager.updateRouteList && window.routeManager.updateRouteList();
+                        }
+                        window.app.canvas.draw && window.app.canvas.draw();
+                        window.app.setStatusInfo('レイアウトデータを読み込みました');
+                    } catch (err) {
+                        alert('レイアウトデータの読み込みに失敗しました: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            });
+            input.click();
+        });
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -442,11 +514,21 @@ class App {
         const tracksArray = Array.isArray(this.trackManager.tracks)
             ? this.trackManager.tracks
             : Array.from(this.trackManager.tracks.values ? this.trackManager.tracks.values() : Object.values(this.trackManager.tracks));
+        // 進路(routes)も保存
+        let routesArray = [];
+        if (window.routeManager && window.routeManager.routes) {
+            if (typeof window.routeManager.routes.values === 'function') {
+                routesArray = Array.from(window.routeManager.routes.values()).map(r => r.toJSON ? r.toJSON() : r);
+            } else if (Array.isArray(window.routeManager.routes)) {
+                routesArray = window.routeManager.routes.map(r => r.toJSON ? r.toJSON() : r);
+            }
+        }
         const layoutData = {
             tracks: tracksArray.map(track => track.toJSON ? track.toJSON() : track),
             startLevers: this.interlockingManager.startLevers,
             destinationButtons: this.interlockingManager.destinationButtons,
-            trackInsulations: this.interlockingManager.trackInsulations
+            trackInsulations: this.interlockingManager.trackInsulations,
+            routes: routesArray // 進路も追加
         };
         const json = JSON.stringify(layoutData, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
@@ -781,7 +863,15 @@ class App {
                             this.currentPreviewElement = null;
                             return;
                         }
-                        // てこ/着点ボタンを1つだけ生成（endpointIndexはnull）
+                        // てこ/着点ボタンを1つだけ生成
+                        // --- ここで端点インデックスを決定 ---
+                        const leverOrButtonPos = { x: addedElement.x, y: addedElement.y };
+                        const ep0 = clickedTrack.endpoints[0];
+                        const ep1 = clickedTrack.endpoints[1];
+                        const dist0 = Math.hypot(leverOrButtonPos.x - ep0.x, leverOrButtonPos.y - ep0.y);
+                        const dist1 = Math.hypot(leverOrButtonPos.x - ep1.x, leverOrButtonPos.y - ep1.y);
+                        const endpointIndex = dist0 < dist1 ? 0 : 1;
+
                         if (elementType.includes('Lever')) {
                             const options = {
                                 id: `${elementType}_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
@@ -789,7 +879,7 @@ class App {
                                 x: addedElement.x, // ユーザーが置いた位置
                                 y: addedElement.y,
                                 trackId: clickedTrack.id,
-                                endpointIndex: null
+                                endpointIndex // ←ここを追加
                             };
                             console.log('[DEBUG:app.js] addStartLever options:', options);
                             this.interlockingManager.addStartLever(options);
@@ -799,7 +889,7 @@ class App {
                                 x: addedElement.x,
                                 y: addedElement.y,
                                 trackId: clickedTrack.id,
-                                endpointIndex: null
+                                endpointIndex // ←ここを追加
                             };
                             console.log('[DEBUG:app.js] addDestinationButton options:', options);
                             this.interlockingManager.addDestinationButton(options);
