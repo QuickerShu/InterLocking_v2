@@ -7,6 +7,7 @@ class Route {
         this.points = points;         // [{id: string, position: 'normal' | 'reverse'}]
         this.isAuto = isAuto;
         this.isActive = false;
+        this.path = points;
     }
 
     activate() {
@@ -244,21 +245,22 @@ class RouteManager {
         allCandidates = allCandidates || [];
         console.log('allCandidates.length:', allCandidates.length);
 
-        // --- 重複排除: Track列＋分岐器direction列＋着点IDでユニーク化 ---
+        // --- 重複排除: leverId+destId+Track列＋分岐器direction列でユニーク化 ---
         const uniqueCandidates = [];
         const seenKeys = new Set();
         (allCandidates || []).forEach(cand => {
             if (!cand) return;
             const pathArr = Array.isArray(cand.path) ? cand.path : [];
+            const leverId = cand.lever?.id || cand.lever?.leverId || '';
+            const destId = cand.destination?.id || cand.destinationButton?.id || '';
             // Track通過列
             const trackSeq = pathArr.map(p => p.trackId).join('-');
             // 分岐器direction列（directionがあるstepのみ）
             const dirSeq = pathArr
                 .filter(p => p.direction)
                 .map(p => `${p.trackId}:${p.direction}`).join('-');
-            // 着点IDも重複排除キーに含める
-            const destId = cand.destination?.id || cand.destinationButton?.id || '';
-            const key = trackSeq + '|' + dirSeq + '|' + destId;
+            // 重複排除キーにleverIdとdestIdも含める
+            const key = leverId + '|' + destId + '|' + trackSeq + '|' + dirSeq;
             if (!seenKeys.has(key)) {
                 uniqueCandidates.push(cand);
                 seenKeys.add(key);
@@ -266,7 +268,7 @@ class RouteManager {
         });
         allCandidates = uniqueCandidates || [];
         // サイドパネルに候補数・内容を表示
-        const panel = document.getElementById('selected-properties');
+        const panel = document.getElementById('route-candidates-panel');
         if (panel) {
             panel.innerHTML = '';
             // 進路登録ボタン
@@ -295,6 +297,7 @@ class RouteManager {
                 const destName = cand.destination?.name || cand.destination?.id || (cand.destinationButton?.name || cand.destinationButton?.id) || JSON.stringify(cand.destination) || '';
                 // 詳細ステップ表記
                 const pathArr = Array.isArray(cand.path) ? cand.path : [];
+                // --- 詳細なstep情報を表示 ---
                 const pathStr = pathArr.map((step, i, arr) => {
                     let track = null;
                     if (window.app && window.app.trackManager) {
@@ -311,22 +314,8 @@ class RouteManager {
                     // from/to端点
                     let from = (typeof step.fromEpIdx === 'number') ? step.fromEpIdx : (typeof step.from === 'number' ? step.from : null);
                     let to = (typeof step.toEpIdx === 'number') ? step.toEpIdx : (typeof step.to === 'number' ? step.to : null);
-                    // 端点情報がなければ、前後stepから推測
-                    if (from == null && i > 0) from = arr[i-1].toEpIdx ?? arr[i-1].to ?? arr[i-1].endpoint;
-                    if (to == null && typeof step.endpoint === 'number') to = step.endpoint;
-                    // 分岐方向
+                    // direction
                     let dir = step.direction;
-                    if (!dir && track && track.isPoint && typeof step.toEpIdx === 'number' && typeof step.fromEpIdx === 'number') {
-                        // 端点ペアから方向を推測（例: 0→1=normal, 0→2=reverse など）
-                        if (track.type === 'point_left' || track.type === 'point_right') {
-                            if ((step.fromEpIdx === 0 && step.toEpIdx === 1) || (step.fromEpIdx === 1 && step.toEpIdx === 0)) dir = 'normal';
-                            else if ((step.fromEpIdx === 0 && step.toEpIdx === 2) || (step.fromEpIdx === 2 && step.toEpIdx === 0)) dir = 'reverse';
-                        }
-                        if (track.type === 'double_cross' || track.type === 'double_slip_x') {
-                            if ((step.fromEpIdx === 0 && step.toEpIdx === 1) || (step.fromEpIdx === 1 && step.toEpIdx === 0) || (step.fromEpIdx === 2 && step.toEpIdx === 3) || (step.fromEpIdx === 3 && step.toEpIdx === 2)) dir = 'straight';
-                            else if ((step.fromEpIdx === 0 && step.toEpIdx === 3) || (step.fromEpIdx === 3 && step.toEpIdx === 0) || (step.fromEpIdx === 1 && step.toEpIdx === 2) || (step.fromEpIdx === 2 && step.toEpIdx === 1)) dir = 'cross';
-                        }
-                    }
                     let dirLabel = '';
                     if (dir) {
                         if (dir === 'normal') dirLabel = '直進';
@@ -335,11 +324,14 @@ class RouteManager {
                         else if (dir === 'cross') dirLabel = 'クロス';
                         else dirLabel = dir;
                     }
+                    // 詳細step表記
                     let epStr = '';
+                    const fromStr = (from !== null && from !== undefined) ? from : '-';
+                    const toStr = (to !== null && to !== undefined) ? to : '-';
                     if (from != null && to != null) {
-                        epStr = `[${from}→${to}` + (dirLabel ? `:${dirLabel}` : '') + ']';
+                        epStr = `[端点${fromStr}→${toStr}` + (dirLabel ? `:${dirLabel}` : '') + ']';
                     } else if (to != null) {
-                        epStr = `[→${to}` + (dirLabel ? `:${dirLabel}` : '') + ']';
+                        epStr = `[→端点${toStr}` + (dirLabel ? `:${dirLabel}` : '') + ']';
                     } else {
                         epStr = dirLabel ? `[${dirLabel}]` : '';
                     }
@@ -361,6 +353,17 @@ class RouteManager {
                 panel.appendChild(div);
             });
         }
+
+        // 進路候補をUIに反映
+        this.routeCandidates = allCandidates;
+
+        // 追加: 候補として残った経路の繋がりをデバッグログで出力
+        allCandidates.forEach((candidate, idx) => {
+            console.debug(`[経路候補${idx+1}]`);
+            (candidate.path || []).forEach((step, stepIdx) => {
+                console.debug(`  step${stepIdx}: trackId=${step.trackId}, fromEpIdx=${step.fromEpIdx}, toEpIdx=${step.toEpIdx}, type=${step.type}, direction=${step.direction}`);
+            });
+        });
     }
 
     // 進路自動生成（経路候補列挙＋重複排除＋UI表示）
@@ -369,86 +372,190 @@ class RouteManager {
     }
 
     /**
-     * leverTrack, leverEpIdx, dest, destEpIdx から経路候補を列挙（簡易BFS）
+     * leverTrack, leverEpIdx, dest, destEpIdx から経路候補を列挙（詳細記録付きBFS）
      * @returns {Array} 経路候補配列
      */
     _findAllRoutesFromEndpoint(leverTrack, leverEpIdx, dest, destEpIdx) {
-        console.log('[DEBUG:_findAllRoutesFromEndpoint] 入力:', {leverTrack, leverEpIdx, dest, destEpIdx});
-        // 全trackリスト取得
         const tracks = window.app.trackManager.tracks;
         const allTracks = Array.isArray(tracks)
             ? tracks
             : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
-        // connections構造をデバッグ出力
-        allTracks.forEach(t => {
-            console.log(`[DEBUG:connections] trackId=${t.id}`, t.connections);
-        });
-        // BFS探索
         const queue = [];
         const results = [];
         queue.push({
             track: leverTrack,
             epIdx: leverEpIdx,
-            path: [{trackId: leverTrack.id, fromEpIdx: null, toEpIdx: leverEpIdx}],
-            visitedTrackIds: new Set([String(leverTrack.id)]),
-            visitedPairs: new Set([`${leverTrack.id}:${leverEpIdx}`])
+            path: [{
+                trackId: leverTrack.id,
+                fromEpIdx: null,
+                toEpIdx: leverEpIdx,
+                type: leverTrack.type,
+                via: 'start',
+                isPoint: leverTrack.isPoint
+            }],
+            visitedSteps: new Set([`${leverTrack.id}:null:${leverEpIdx}`]),
+            visitedTrackIdsInternalMove: new Set(), // track内移動履歴
+            visitedTrackInternalMove: new Set() // track内移動履歴
         });
-        console.log('[DEBUG:BFS初期キュー]', JSON.stringify(queue, null, 2));
-        let bfsStep = 0;
         while (queue.length > 0) {
             const node = queue.shift();
-            bfsStep++;
-            console.log(`[DEBUG:BFS] step=${bfsStep} 現在: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path);
-            // ゴール判定
+            let skipped = false; // 追加: スキップ理由記録用
+            // 探索状況を出力
+            console.debug(`[探索状況] 現在: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'));
             if (String(node.track.id) === String(dest.trackId) && node.epIdx === destEpIdx) {
-                console.log(`[DEBUG:BFS] 到達: trackId=${node.track.id}, epIdx=${node.epIdx}`);
-                results.push({path: node.path});
+                results.push({ path: node.path });
                 continue;
             }
-            // track内端点間移動（無限ループ防止: 1往復のみ許可）
             const endpoints = Array.isArray(node.track.endpoints) ? node.track.endpoints : [];
+            let anyTrackMove = false;
             for (let nextEpIdx = 0; nextEpIdx < endpoints.length; nextEpIdx++) {
                 if (nextEpIdx === node.epIdx) continue;
-                const pairKey = `${node.track.id}:${node.epIdx}->${nextEpIdx}`;
-                if (node.visitedPairs.has(pairKey)) continue;
-                // 逆方向の移動もvisitedPairsに含めて無限ループ防止
-                const reversePairKey = `${node.track.id}:${nextEpIdx}->${node.epIdx}`;
-                if (node.visitedPairs.has(reversePairKey)) continue;
-                const newVisitedPairs = new Set(node.visitedPairs);
-                newVisitedPairs.add(pairKey);
-                newVisitedPairs.add(reversePairKey);
-                console.log(`[DEBUG:BFS] track内移動: ${node.track.id} ${node.epIdx}->${nextEpIdx}`);
+                // 2端点trackの場合は、nextEpIdx = 1 - node.epIdx のみ許可
+                if (endpoints.length === 2 && nextEpIdx !== (1 - node.epIdx)) continue;
+                const stepKey = `${node.track.id}:${node.epIdx}:${nextEpIdx}`;
+                // track内移動で通過したtrackIdの再通過禁止
+                if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
+                    console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（track内移動再通過禁止）`);
+                    skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
+                    continue;
+                }
+                if (node.visitedSteps.has(stepKey)) {
+                    console.debug(`[SKIP:visitedSteps] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（端点ペア再通過禁止）`);
+                    skipped = `[SKIP:visitedSteps] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}`;
+                    continue;
+                }
+                if (node.visitedTrackInternalMove && node.visitedTrackInternalMove.has(node.track.id)) {
+                    console.debug(`[SKIP:visitedTrackInternalMove] trackId=${node.track.id}（track内移動1回制限）`);
+                    skipped = `[SKIP:visitedTrackInternalMove] trackId=${node.track.id}`;
+                    continue;
+                }
+                let addVisitedTrackIdInternalMove = false;
+                if (node.track.type === 'double_cross' || node.track.type === 'double_slip_x') {
+                    const stepKey = `${node.track.id}:${node.epIdx}:${nextEpIdx}`;
+                    if (node.visitedSteps.has(stepKey)) {
+                        console.debug(`[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（多端点track端点ペア再通過禁止）`);
+                        skipped = `[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}`;
+                        continue;
+                    }
+                    if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
+                        console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（多端点trackId再通過禁止）`);
+                        skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
+                        continue;
+                    }
+                    addVisitedTrackIdInternalMove = true;
+                } else if (endpoints.length === 2) {
+                    const lastStep = node.path[node.path.length - 1];
+                    if (lastStep && lastStep.trackId === node.track.id && lastStep.fromEpIdx !== null && lastStep.toEpIdx !== null) {
+                        if ((lastStep.fromEpIdx === nextEpIdx && lastStep.toEpIdx === node.epIdx) || (lastStep.fromEpIdx === node.epIdx && lastStep.toEpIdx === nextEpIdx)) {
+                            addVisitedTrackIdInternalMove = true;
+                        }
+                    }
+                    if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
+                        console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（2端点trackId再通過禁止）`);
+                        skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
+                        continue;
+                    }
+                }
+                let direction = undefined;
+                if (node.track.isPoint && typeof node.epIdx === 'number' && typeof nextEpIdx === 'number') {
+                    if (node.track.type === 'point_left' || node.track.type === 'point_right') {
+                        if ((node.epIdx === 0 && nextEpIdx === 1) || (node.epIdx === 1 && nextEpIdx === 0)) direction = 'normal';
+                        else if ((node.epIdx === 0 && nextEpIdx === 2) || (node.epIdx === 2 && nextEpIdx === 0)) direction = 'reverse';
+                    }
+                    if (node.track.type === 'double_cross' || node.track.type === 'double_slip_x') {
+                        if ((node.epIdx === 0 && nextEpIdx === 1) || (node.epIdx === 1 && nextEpIdx === 0) || (node.epIdx === 2 && nextEpIdx === 3) || (node.epIdx === 3 && nextEpIdx === 2)) direction = 'straight';
+                        else if ((node.epIdx === 0 && nextEpIdx === 3) || (node.epIdx === 3 && nextEpIdx === 0) || (node.epIdx === 1 && nextEpIdx === 2) || (node.epIdx === 2 && nextEpIdx === 1)) direction = 'cross';
+                    }
+                }
+                // track内移動時のみvisitedStepsにstepKeyを追加
+                const newVisitedSteps = new Set(node.visitedSteps);
+                newVisitedSteps.add(stepKey);
+                const newVisitedTrackInternalMove = new Set(node.visitedTrackInternalMove);
+                newVisitedTrackInternalMove.add(node.track.id);
+                // track内移動で通過した場合のみvisitedTrackIdsInternalMoveにtrackIdを追加
+                let newVisitedTrackIdsInternalMove = new Set(node.visitedTrackIdsInternalMove);
+                if (addVisitedTrackIdInternalMove) {
+                    newVisitedTrackIdsInternalMove.add(node.track.id);
+                }
+                // track間移動で入ったtrackIdはここでは追加しない
+                let newVisitedTrackIdsByConnection = new Set(node.visitedTrackIdsByConnection);
                 queue.push({
                     track: node.track,
                     epIdx: nextEpIdx,
-                    path: node.path.concat({trackId: node.track.id, fromEpIdx: node.epIdx, toEpIdx: nextEpIdx}),
-                    visitedTrackIds: new Set(node.visitedTrackIds),
-                    visitedPairs: newVisitedPairs
+                    path: node.path.concat({
+                        trackId: node.track.id,
+                        fromEpIdx: node.epIdx,
+                        toEpIdx: nextEpIdx,
+                        type: node.track.type,
+                        via: 'track',
+                        isPoint: node.track.isPoint,
+                        direction: direction !== undefined ? direction : null
+                    }),
+                    visitedSteps: newVisitedSteps,
+                    visitedTrackIdsInternalMove: newVisitedTrackIdsInternalMove,
+                    visitedTrackIdsByConnection: newVisitedTrackIdsByConnection,
+                    visitedTrackInternalMove: newVisitedTrackInternalMove
                 });
+                // 追加: track内移動の進み先を出力
+                console.debug(`[探索状況] track内移動: trackId=${node.track.id}, fromEpIdx=${node.epIdx} → toEpIdx=${nextEpIdx}`);
+                anyTrackMove = true;
             }
-            // track間移動（今いる端点から出ているconnectionsだけを使う）
             let connectionsArr = Array.isArray(node.track.connections) ? node.track.connections : Array.from(node.track.connections);
+            let anyConnectionMove = false;
             for (const [fromIdx, conn] of connectionsArr) {
-                if (Number(fromIdx) !== node.epIdx) continue; // 今いる端点からのみ
+                if (Number(fromIdx) !== node.epIdx) continue;
                 const nextTrack = allTracks.find(t => String(t.id) === String(conn.trackId));
                 if (!nextTrack) continue;
-                if (node.visitedTrackIds.has(String(nextTrack.id))) {
-                    console.log(`[DEBUG:BFS] track間移動: ${node.track.id} epIdx=${node.epIdx} → ${nextTrack.id} (再通過禁止)`);
+                // track間移動で入ったtrackIdの再入場禁止
+                if (node.visitedTrackIdsByConnection && node.visitedTrackIdsByConnection.has(nextTrack.id)) {
+                    console.debug(`[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}（track間移動再入場禁止）`);
+                    skipped = `[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}`;
                     continue;
                 }
-                const newVisitedTrackIds = new Set(node.visitedTrackIds);
-                newVisitedTrackIds.add(String(nextTrack.id));
-                console.log(`[DEBUG:BFS] track間移動: ${node.track.id} epIdx=${node.epIdx} → ${nextTrack.id} epIdx=${conn.endpointIndex}`);
+                let direction = undefined;
+                if (nextTrack.isPoint && typeof conn.endpointIndex === 'number' && typeof node.epIdx === 'number') {
+                    if (nextTrack.type === 'point_left' || nextTrack.type === 'point_right') {
+                        if ((conn.endpointIndex === 0 && node.epIdx === 1) || (conn.endpointIndex === 1 && node.epIdx === 0)) direction = 'normal';
+                        else if ((conn.endpointIndex === 0 && node.epIdx === 2) || (conn.endpointIndex === 2 && node.epIdx === 0)) direction = 'reverse';
+                    }
+                    if (nextTrack.type === 'double_cross' || nextTrack.type === 'double_slip_x') {
+                        if ((conn.endpointIndex === 0 && node.epIdx === 1) || (conn.endpointIndex === 1 && node.epIdx === 0) || (conn.endpointIndex === 2 && node.epIdx === 3) || (conn.endpointIndex === 3 && node.epIdx === 2)) direction = 'straight';
+                        else if ((conn.endpointIndex === 0 && node.epIdx === 3) || (conn.endpointIndex === 3 && node.epIdx === 0) || (conn.endpointIndex === 1 && node.epIdx === 2) || (conn.endpointIndex === 2 && node.epIdx === 1)) direction = 'cross';
+                    }
+                }
+                // track間移動時はvisitedStepsをそのままコピー
+                const newVisitedSteps = new Set(node.visitedSteps);
+                // track間移動で入ったtrackIdをvisitedTrackIdsByConnectionに追加
+                const newVisitedTrackIdsByConnection = new Set(node.visitedTrackIdsByConnection);
+                newVisitedTrackIdsByConnection.add(nextTrack.id);
+                // track内移動で通過したtrackIdはそのままコピー
+                const newVisitedTrackIdsInternalMove = new Set(node.visitedTrackIdsInternalMove);
                 queue.push({
                     track: nextTrack,
                     epIdx: conn.endpointIndex,
-                    path: node.path.concat({trackId: nextTrack.id, fromEpIdx: node.epIdx, toEpIdx: conn.endpointIndex}),
-                    visitedTrackIds: newVisitedTrackIds,
-                    visitedPairs: new Set() // trackをまたぐのでリセット
+                    path: node.path.concat({
+                        trackId: nextTrack.id,
+                        fromEpIdx: node.epIdx,
+                        toEpIdx: conn.endpointIndex,
+                        type: nextTrack.type,
+                        via: 'connection',
+                        isPoint: nextTrack.isPoint,
+                        direction: direction !== undefined ? direction : null
+                    }),
+                    visitedSteps: newVisitedSteps,
+                    visitedTrackIdsInternalMove: newVisitedTrackIdsInternalMove,
+                    visitedTrackIdsByConnection: newVisitedTrackIdsByConnection,
+                    visitedTrackInternalMove: new Set(node.visitedTrackInternalMove)
                 });
+                // 追加: track間移動の進み先を出力
+                console.debug(`[探索状況] track間移動: fromTrackId=${node.track.id}, fromEpIdx=${node.epIdx} → toTrackId=${nextTrack.id}, toEpIdx=${conn.endpointIndex}`);
+                anyConnectionMove = true;
+            }
+            // 追加: このnodeからtrack内・track間ともに進めなかった場合、途絶情報を出力
+            if (!anyTrackMove && !anyConnectionMove) {
+                console.debug(`[DEADEND] 経路途絶: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'), skipped ? `最後のスキップ理由: ${skipped}` : '');
             }
         }
-        console.log('[DEBUG:_findAllRoutesFromEndpoint] 経路候補:', results);
         return results;
     }
 
