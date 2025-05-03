@@ -570,6 +570,18 @@ class RouteManager {
         if (!route.id) {
             route.id = (window.crypto && window.crypto.randomUUID) ? window.crypto.randomUUID() : (Date.now() + '_' + Math.floor(Math.random() * 10000));
         }
+        // デフォルト名自動連番
+        if (!route.name || route.name.startsWith('開通てこ')) {
+            // 既存進路名を列挙
+            const existingNames = new Set(Array.from(this.routes.values()).map(r => r.name));
+            let num = 1;
+            let name = '';
+            do {
+                name = `進路${String(num).padStart(3, '0')}`;
+                num++;
+            } while (existingNames.has(name));
+            route.name = name;
+        }
         this.routes.set(route.id, route);
     }
 
@@ -584,20 +596,63 @@ class RouteManager {
             this.routeList.innerHTML = '<div style="color:gray;">登録された進路はありません</div>';
             return;
         }
+        // 編集中のrouteIdをthis.editingRouteIdで管理
+        if (this.editingRouteId === undefined) this.editingRouteId = null;
         routes.forEach((route, idx) => {
             const div = document.createElement('div');
             div.className = 'route-item';
             const leverName = route.lever?.name || route.lever?.id || '';
             const destName = route.destination?.name || route.destination?.id || '';
-            div.innerHTML = `
-                <div class="route-header">
-                    <span class="route-name">${route.name || `進路${idx+1}`}</span>
-                    <span class="route-generation-mode ${route.isAuto ? 'auto' : 'manual'}">${route.isAuto ? '自動' : '手動'}</span>
-                </div>
-                <div class="route-details">
-                    てこ: ${leverName} → 着点: ${destName}
-                </div>
-            `;
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'route-header';
+            // 進路名表示 or 編集input
+            if (this.editingRouteId === route.id) {
+                // 編集モード
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.value = route.name || `進路${idx+1}`;
+                nameInput.className = 'route-name-input';
+                nameInput.style.marginRight = '8px';
+                headerDiv.appendChild(nameInput);
+                // 反映ボタン
+                const applyBtn = document.createElement('button');
+                applyBtn.textContent = '反映';
+                applyBtn.className = 'route-edit-apply-btn';
+                applyBtn.onclick = () => {
+                    const newName = nameInput.value.trim();
+                    if (newName) {
+                        route.name = newName;
+                    }
+                    this.editingRouteId = null;
+                    this.updateRouteList();
+                };
+                headerDiv.appendChild(applyBtn);
+            } else {
+                // 通常表示
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'route-name';
+                nameSpan.textContent = route.name || `進路${idx+1}`;
+                nameSpan.style.marginRight = '8px';
+                headerDiv.appendChild(nameSpan);
+                // 変更ボタン
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '変更';
+                editBtn.className = 'route-edit-btn';
+                editBtn.onclick = () => {
+                    this.editingRouteId = route.id;
+                    this.updateRouteList();
+                };
+                headerDiv.appendChild(editBtn);
+            }
+            const modeSpan = document.createElement('span');
+            modeSpan.className = `route-generation-mode ${route.isAuto ? 'auto' : 'manual'}`;
+            modeSpan.textContent = route.isAuto ? '自動' : '手動';
+            headerDiv.appendChild(modeSpan);
+            div.appendChild(headerDiv);
+            const detailsDiv = document.createElement('div');
+            detailsDiv.className = 'route-details';
+            detailsDiv.textContent = `てこ: ${leverName} → 着点: ${destName}`;
+            div.appendChild(detailsDiv);
             // 開通ボタン
             const openBtn = document.createElement('button');
             openBtn.textContent = '開通';
@@ -625,17 +680,73 @@ class RouteManager {
      * 指定した進路を開通させる
      * @param {string} routeId
      */
-    activateRoute(routeId) {
+    async activateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
+
+        // --- 支障チェック ---
+        // 1. 今開通中の進路一覧
+        const activeRoutes = Array.from(this.routes.values()).filter(r => r !== route && r.isActive);
+        // 2. 新進路の端点ペア列挙
+        const newPairs = (route.points || []).map(s => `${s.trackId}_${s.fromEpIdx}_${s.toEpIdx}`);
+        // 3. 支障している進路を列挙
+        const conflictRoutes = [];
+        for (const ar of activeRoutes) {
+            for (const s of ar.points || []) {
+                // trackId取得
+                const trackId = s.trackId;
+                // trackType取得
+                let trackType = null;
+                if (window.app && window.app.trackManager) {
+                    const tracks = window.app.trackManager.tracks;
+                    if (typeof tracks.get === 'function') {
+                        const t = tracks.get(trackId) || tracks.get(Number(trackId));
+                        if (t) trackType = t.type;
+                    } else if (typeof tracks === 'object') {
+                        const t = tracks[trackId] || tracks[Number(trackId)];
+                        if (t) trackType = t.type;
+                    }
+                }
+                // ダブルクロス・ダブルスリップはtrackId一致だけで支障
+                if (trackType === 'double_cross' || trackType === 'double_slip_x') {
+                    if ((route.points || []).some(ns => ns.trackId == trackId)) {
+                        conflictRoutes.push(ar);
+                        break;
+                    }
+                } else {
+                    // それ以外は端点ペア一致で支障
+                    const pair = `${trackId}_${s.fromEpIdx}_${s.toEpIdx}`;
+                    if (newPairs.includes(pair)) {
+                        conflictRoutes.push(ar);
+                        break;
+                    }
+                }
+            }
+        }
+        if (conflictRoutes.length > 0) {
+            // ワーニングダイアログ
+            const msg = `この進路は既に開通中の進路と重複しています。\n\n支障する進路:\n${conflictRoutes.map(r => r.name).join(', ')}\n\nOKで既存進路を解放して開通、キャンセルで中止します。`;
+            const ok = window.confirm(msg);
+            if (!ok) return;
+            // 支障進路のみ解除
+            for (const cr of conflictRoutes) {
+                this.deactivateRoute(cr.id);
+            }
+        } else {
+            // 支障がなければ今アクティブな進路だけ解除
+            const activeRoutesToDeactivate = Array.from(this.routes.values()).filter(r => r.isActive);
+            activeRoutesToDeactivate.forEach(r => this.deactivateRoute(r.id));
+        }
         // デバッグ: てこtrackId, 経路stepのtrackId一覧
         const leverTrackId = route.lever?.trackId;
         console.log('[DEBUG] てこtrackId:', leverTrackId);
         const stepTrackIds = (route.points || []).map(s => s.trackId);
         console.log('[DEBUG] 経路stepのtrackId一覧:', stepTrackIds);
-        // まず全進路を解除（単純化のため）
-        this.routes.forEach(r => { if (r.isActive) this.deactivateRoute(r.id); });
+        // まず今アクティブな進路だけ解除
+        const activeRoutesToDeactivate = Array.from(this.routes.values()).filter(r => r.isActive);
+        activeRoutesToDeactivate.forEach(r => this.deactivateRoute(r.id));
         // 経路上のTrackを進路色・分岐器directionに
+        const updatedTrackIds = new Set();
         (route.points || []).forEach((step, idx, arr) => {
             let track = null;
             if (window.app && window.app.trackManager) {
@@ -648,16 +759,10 @@ class RouteManager {
                     track = tracks[step.trackId] || tracks[Number(step.trackId)];
                 }
             }
-            console.log(`[DEBUG] stepIdx=${idx} step.trackId=${step.trackId} track=`, track);
-            if (!track) {
-                console.warn(`[DEBUG] trackId=${step.trackId} のtrackが取得できません`);
-                return;
-            }
+            if (!track || updatedTrackIds.has(track.id)) return;
             // 線路色: 進路中
-            if (track.type === 'double_cross') {
-                // ここでstatusMapを一度リセット
-                track.clearAllPairStatus();
-                // step間でfrom→toペアのみROUTEにする
+            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                track.clearAllPairStatus && track.clearAllPairStatus();
                 for (let i = 0; i < arr.length - 1; i++) {
                     const curr = arr[i];
                     const next = arr[i + 1];
@@ -669,6 +774,7 @@ class RouteManager {
             } else {
                 track.status = 'ROUTE';
             }
+            updatedTrackIds.add(track.id);
             console.log(`[DEBUG] trackId=${step.trackId} のstatusをROUTEに設定`, track);
             // デバッグ: てこtrackIdと一致する場合は明示的に出力
             if (String(step.trackId) === String(leverTrackId)) {
@@ -698,6 +804,7 @@ class RouteManager {
     deactivateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
+        const updatedTrackIds2 = new Set();
         (route.points || []).forEach((step) => {
             let track = null;
             if (window.app && window.app.trackManager) {
@@ -708,18 +815,13 @@ class RouteManager {
                     track = tracks[step.trackId] || tracks[Number(step.trackId)];
                 }
             }
-            if (!track) return;
-            // 線路色: 通常
-            if (track.type === 'double_cross') {
-                track.setPairStatus(step.fromEpIdx, step.toEpIdx, 'normal');
+            if (!track || updatedTrackIds2.has(track.id)) return;
+            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                track.clearAllPairStatus && track.clearAllPairStatus();
             } else {
                 track.status = 'normal';
             }
-            // 分岐器等のdirectionも元に戻す（ここでは初期値に）
-            if (track.isPoint) {
-                if (track.type === 'point_left' || track.type === 'point_right') track.pointDirection = 'normal';
-                else if (track.type === 'double_cross' || track.type === 'double_slip_x') track.pointDirection = 'straight';
-            }
+            updatedTrackIds2.add(track.id);
         });
         route.isActive = false;
         if (window.app && window.app.canvas) window.app.canvas.draw();
