@@ -654,7 +654,21 @@ class RouteManager {
                 return;
             }
             // 線路色: 進路中
-            track.status = 'ROUTE';
+            if (track.type === 'double_cross') {
+                // ここでstatusMapを一度リセット
+                track.clearAllPairStatus();
+                // step間でfrom→toペアのみROUTEにする
+                for (let i = 0; i < arr.length - 1; i++) {
+                    const curr = arr[i];
+                    const next = arr[i + 1];
+                    if (curr.trackId == track.id && next.trackId == track.id) {
+                        track.setPairStatus(curr.toEpIdx, next.toEpIdx, 'ROUTE');
+                        console.log(`[DEBUG] double_cross setPairStatus: ${curr.toEpIdx}->${next.toEpIdx} をROUTEに`);
+                    }
+                }
+            } else {
+                track.status = 'ROUTE';
+            }
             console.log(`[DEBUG] trackId=${step.trackId} のstatusをROUTEに設定`, track);
             // デバッグ: てこtrackIdと一致する場合は明示的に出力
             if (String(step.trackId) === String(leverTrackId)) {
@@ -672,12 +686,6 @@ class RouteManager {
                     else if ((from === 0 && to === 3) || (from === 3 && to === 0) || (from === 1 && to === 2) || (from === 2 && to === 1)) track.pointDirection = 'cross';
                 }
             }
-            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
-                if (!track.routeSegments) track.routeSegments = { in: [] };
-                track.routeSegments.in.push({ from: step.fromEpIdx, to: step.toEpIdx });
-            }
-            // デバッグ: track.status
-            console.log(`[DEBUG] trackId=${step.trackId} のstatus:`, track.status);
         });
         route.isActive = true;
         if (window.app && window.app.canvas) window.app.canvas.draw();
@@ -702,14 +710,16 @@ class RouteManager {
             }
             if (!track) return;
             // 線路色: 通常
-            track.status = 'normal';
+            if (track.type === 'double_cross') {
+                track.setPairStatus(step.fromEpIdx, step.toEpIdx, 'normal');
+            } else {
+                track.status = 'normal';
+            }
             // 分岐器等のdirectionも元に戻す（ここでは初期値に）
             if (track.isPoint) {
                 if (track.type === 'point_left' || track.type === 'point_right') track.pointDirection = 'normal';
                 else if (track.type === 'double_cross' || track.type === 'double_slip_x') track.pointDirection = 'straight';
             }
-            // ダブルクロス等のrouteSegmentsもクリア
-            if (track.routeSegments) track.routeSegments.in = [];
         });
         route.isActive = false;
         if (window.app && window.app.canvas) window.app.canvas.draw();

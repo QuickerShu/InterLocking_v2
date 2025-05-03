@@ -7,6 +7,7 @@ class Track {
         this.connections = new Map(); // Map<endpointIndex, { trackId, endpointIndex }>
         this.visible = true;         // 表示/非表示
         this.status = 'normal';      // 線路の状態
+        this.statusMap = {};         // 端点ペアごとの状態（ダブルクロス用）
         this.rotation = 0;
         
         // ポイント関連のプロパティ
@@ -332,6 +333,28 @@ class Track {
             { x: x2, y: y2 }
         ];
         return track;
+    }
+
+    // 端点ペアごとの状態を設定
+    setPairStatus(fromIdx, toIdx, status) {
+        if (this.type === 'double_cross') {
+            this.statusMap[`${fromIdx}-${toIdx}`] = status;
+        }
+    }
+
+    // 端点ペアごとの状態を取得
+    getPairStatus(fromIdx, toIdx) {
+        if (this.type === 'double_cross') {
+            return this.statusMap[`${fromIdx}-${toIdx}`] || 'normal';
+        }
+        return this.status;
+    }
+
+    // すべての端点ペア状態をクリア
+    clearAllPairStatus() {
+        if (this.type === 'double_cross') {
+            this.statusMap = {};
+        }
     }
 }
 
