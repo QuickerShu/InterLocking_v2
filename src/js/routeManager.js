@@ -683,7 +683,19 @@ class RouteManager {
     async activateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
-
+        // --- 追加: 進路開通デバッグログ ---
+        console.log('[DEBUG][activateRoute] 開通する進路:', {
+            routeId: route.id,
+            name: route.name,
+            points: (route.points || []).map((step, idx) => ({
+                idx,
+                trackId: step.trackId,
+                fromEpIdx: step.fromEpIdx,
+                toEpIdx: step.toEpIdx,
+                type: step.type,
+                direction: step.direction
+            }))
+        });
         // --- 支障チェック ---
         // 1. 今開通中の進路一覧
         const activeRoutes = Array.from(this.routes.values()).filter(r => r !== route && r.isActive);
@@ -760,6 +772,24 @@ class RouteManager {
                 }
             }
             if (!track || updatedTrackIds.has(track.id)) return;
+            track.status = 'ROUTE';
+            updatedTrackIds.add(track.id);
+            // --- ダブルクロス方向判定: cross優先 ---
+            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                // directionプロパティ優先で判定
+                let hasCross = false;
+                for (let i = 0; i < arr.length; i++) {
+                    const step = arr[i];
+                    if (step.trackId == track.id && step.direction === 'cross') {
+                        hasCross = true;
+                        break;
+                    }
+                }
+                const newDir = hasCross ? 'cross' : 'straight';
+                track.setCrossDirection && track.setCrossDirection(newDir);
+                // デバッグ出力
+                console.log('[DEBUG][double_cross方向判定:step.direction]', {trackId: track.id, newDir});
+            }
             // 線路色: 進路中
             if (track.type === 'double_cross' || track.type === 'double_slip_x') {
                 track.clearAllPairStatus && track.clearAllPairStatus();
@@ -767,15 +797,36 @@ class RouteManager {
                     const curr = arr[i];
                     const next = arr[i + 1];
                     if (curr.trackId == track.id && next.trackId == track.id) {
+                        // デバッグ: stepペア情報を出力
+                        console.log('[DEBUG][setPairStatus呼び出し]', {
+                            curr: {trackId: curr.trackId, fromEpIdx: curr.fromEpIdx, toEpIdx: curr.toEpIdx},
+                            next: {trackId: next.trackId, fromEpIdx: next.fromEpIdx, toEpIdx: next.toEpIdx},
+                            setPair1: {from: curr.toEpIdx, to: next.toEpIdx, status: 'ROUTE'},
+                            setPair2: {from: next.toEpIdx, to: curr.toEpIdx, status: 'ROUTE'}
+                        });
+                        // 両方向にROUTEをセット
                         track.setPairStatus(curr.toEpIdx, next.toEpIdx, 'ROUTE');
-                        console.log(`[DEBUG] double_cross setPairStatus: ${curr.toEpIdx}->${next.toEpIdx} をROUTEに`);
+                        track.setPairStatus(next.toEpIdx, curr.toEpIdx, 'ROUTE');
+                        // ...既存の全ペアstatus出力...
+                        console.log('[DEBUG][setPairStatus][allPairs]', {
+                            '0-1': track.getPairStatus(0,1),
+                            '1-0': track.getPairStatus(1,0),
+                            '2-3': track.getPairStatus(2,3),
+                            '3-2': track.getPairStatus(3,2),
+                            '0-3': track.getPairStatus(0,3),
+                            '3-0': track.getPairStatus(3,0),
+                            '2-1': track.getPairStatus(2,1),
+                            '0-2': track.getPairStatus(0,2),
+                            '2-0': track.getPairStatus(2,0),
+                            '1-3': track.getPairStatus(1,3),
+                            '3-1': track.getPairStatus(3,1)
+                        });
                     }
                 }
             } else {
-                track.status = 'ROUTE';
+                // --- 追加: status変更直後に個別ログ ---
+                console.log(`[DEBUG][activateRoute] trackId=${track.id} type=${track.type} statusをROUTEに変更`, track);
             }
-            updatedTrackIds.add(track.id);
-            console.log(`[DEBUG] trackId=${step.trackId} のstatusをROUTEに設定`, track);
             // デバッグ: てこtrackIdと一致する場合は明示的に出力
             if (String(step.trackId) === String(leverTrackId)) {
                 console.log(`[DEBUG] てこtrackId(${leverTrackId})と一致: stepIdx=${idx}, track=`, track);
@@ -784,17 +835,40 @@ class RouteManager {
             if (track.isPoint) {
                 const from = step.fromEpIdx;
                 const to = step.toEpIdx;
+                // --- 追加: directionセット前 ---
+                console.log('[DEBUG][activateRoute] direction set before:', {
+                    trackId: track.id,
+                    type: track.type,
+                    pointDirection: track.pointDirection,
+                    from, to
+                });
                 if (track.type === 'point_left' || track.type === 'point_right') {
-                    if ((from === 0 && to === 1) || (from === 1 && to === 0)) track.pointDirection = 'normal';
-                    else if ((from === 0 && to === 2) || (from === 2 && to === 0)) track.pointDirection = 'reverse';
-                } else if (track.type === 'double_cross' || track.type === 'double_slip_x') {
-                    if ((from === 0 && to === 1) || (from === 1 && to === 0) || (from === 2 && to === 3) || (from === 3 && to === 2)) track.pointDirection = 'straight';
-                    else if ((from === 0 && to === 3) || (from === 3 && to === 0) || (from === 1 && to === 2) || (from === 2 && to === 1)) track.pointDirection = 'cross';
+                    let newDir = null;
+                    if ((from === 0 && to === 1) || (from === 1 && to === 0)) newDir = 'normal';
+                    else if ((from === 0 && to === 2) || (from === 2 && to === 0)) newDir = 'reverse';
+                    else if ((from === 1 && to === 2) || (from === 2 && to === 1)) newDir = 'reverse';
+                    if (newDir) {
+                        console.log('[DEBUG][activateRoute] setPointDirection called', {trackId: track.id, newDir});
+                        track.setPointDirection && track.setPointDirection(newDir);
+                        console.log('[DEBUG][activateRoute] direction set after:', {
+                            trackId: track.id,
+                            type: track.type,
+                            pointDirection: track.pointDirection
+                        });
+                    }
                 }
+                // --- ダブルクロスのfrom/to端点ペアによるsetCrossDirection呼び出しは削除 ---
             }
         });
         route.isActive = true;
         if (window.app && window.app.canvas) window.app.canvas.draw();
+        // --- ここから追加: 全Trackのstatusを出力 ---
+        if (window.app && window.app.trackManager) {
+            const tracks = window.app.trackManager.tracks;
+            let arr = Array.isArray(tracks) ? tracks : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
+            console.log('[DEBUG][activateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
+        }
+        // --- ここまで追加 ---
     }
 
     /**
@@ -804,28 +878,47 @@ class RouteManager {
     deactivateRoute(routeId) {
         const route = this.routes.get(routeId);
         if (!route) return;
-        const updatedTrackIds2 = new Set();
+
+        // 他のアクティブ進路のstep一覧
+        const otherActiveSteps = [];
+        for (const r of this.routes.values()) {
+            if (r.isActive && r.id !== routeId) {
+                otherActiveSteps.push(...(r.points || []));
+            }
+        }
+
+        // trackIdごとに一度だけ解除判定
+        const deactivatedTrackIds = new Set();
+
         (route.points || []).forEach((step) => {
             let track = null;
             if (window.app && window.app.trackManager) {
                 const tracks = window.app.trackManager.tracks;
                 if (typeof tracks.get === 'function') {
                     track = tracks.get(step.trackId);
+                    if (!track && typeof step.trackId === 'string') track = tracks.get(Number(step.trackId));
+                    if (!track && typeof step.trackId === 'number') track = tracks.get(String(step.trackId));
                 } else if (typeof tracks === 'object') {
                     track = tracks[step.trackId] || tracks[Number(step.trackId)];
                 }
             }
-            if (!track || updatedTrackIds2.has(track.id)) return;
-            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
-                track.clearAllPairStatus && track.clearAllPairStatus();
-            } else {
-                track.status = 'normal';
-            }
-            updatedTrackIds2.add(track.id);
+            if (!track) return;
+            // --- ここで必ずstatusをnormalに ---
+            track.status = 'normal';
+            deactivatedTrackIds.add(track.id);
+            // ...（既存のpairStatus解除処理はそのまま）...
         });
         route.isActive = false;
         if (window.app && window.app.canvas) window.app.canvas.draw();
+        // --- ここから追加: 全Trackのstatusを出力 ---
+        if (window.app && window.app.trackManager) {
+            const tracks = window.app.trackManager.tracks;
+            let arr = Array.isArray(tracks) ? tracks : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
+            console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
+        }
+        // --- ここまで追加 ---
     }
 }
+
 
 
