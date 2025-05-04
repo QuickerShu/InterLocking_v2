@@ -245,6 +245,12 @@ class RouteManager {
         allCandidates = allCandidates || [];
         console.log('allCandidates.length:', allCandidates.length);
 
+        // lever.trackIdとdestination.trackIdが一致する進路候補は除外
+        allCandidates = allCandidates.filter(cand => {
+            if (!cand || !cand.lever || !cand.destination) return true;
+            return String(cand.lever.trackId) !== String(cand.destination.trackId);
+        });
+
         // --- 重複排除: leverId+destId+Track列＋分岐器direction列でユニーク化 ---
         const uniqueCandidates = [];
         const seenKeys = new Set();
@@ -459,8 +465,10 @@ class RouteManager {
                 let direction = undefined;
                 if (node.track.isPoint && typeof node.epIdx === 'number' && typeof nextEpIdx === 'number') {
                     if (node.track.type === 'point_left' || node.track.type === 'point_right') {
+                        // 0↔1: normal, 0↔2: reverse 以外はstepを作らない
                         if ((node.epIdx === 0 && nextEpIdx === 1) || (node.epIdx === 1 && nextEpIdx === 0)) direction = 'normal';
                         else if ((node.epIdx === 0 && nextEpIdx === 2) || (node.epIdx === 2 && nextEpIdx === 0)) direction = 'reverse';
+                        else continue; // 1↔2, 2↔1等はstepを作らない
                     }
                     if (node.track.type === 'double_cross' || node.track.type === 'double_slip_x') {
                         if ((node.epIdx === 0 && nextEpIdx === 1) || (node.epIdx === 1 && nextEpIdx === 0) || (node.epIdx === 2 && nextEpIdx === 3) || (node.epIdx === 3 && nextEpIdx === 2)) direction = 'straight';
@@ -823,20 +831,37 @@ class RouteManager {
             }
             // 分岐器・ダブルクロス等のdirection自動判定
             if (track.isPoint) {
-                // 同じtrackIdのstepのdirectionを集める
-                let directions = [];
-                for (const s of route.points) {
-                    if (s.trackId == track.id && (s.direction === 'straight' || s.direction === 'cross')) {
-                        directions.push(s.direction);
+                if (track.type === 'point_left' || track.type === 'point_right') {
+                    // 今回開通する進路（route.points）だけでdirectionを集計
+                    let directions = [];
+                    for (const s of route.points) {
+                        if (s.trackId == track.id && (s.direction === 'normal' || s.direction === 'reverse' || s.direction === 'straight' || s.direction === 'branch')) {
+                            directions.push(s.direction);
+                        }
+                    }
+                    // 'branch'優先、なければ'straight'/'normal'
+                    if (directions.includes('reverse') || directions.includes('branch')) {
+                        track.pointDirection = 'reverse';
+                    } else if (directions.includes('normal') || directions.includes('straight')) {
+                        track.pointDirection = 'normal';
+                    } else {
+                        // どちらもなければデフォルト
+                        track.pointDirection = 'normal';
+                    }
+                } else {
+                    // ダブルクロス等
+                    let directions = [];
+                    for (const s of route.points) {
+                        if (s.trackId == track.id && (s.direction === 'straight' || s.direction === 'cross')) {
+                            directions.push(s.direction);
+                        }
+                    }
+                    if (directions.includes('cross')) {
+                        track.pointDirection = 'cross';
+                    } else if (directions.includes('straight')) {
+                        track.pointDirection = 'straight';
                     }
                 }
-                // cross優先、なければstraight、なければ上書きしない
-                if (directions.includes('cross')) {
-                    track.pointDirection = 'cross';
-                } else if (directions.includes('straight')) {
-                    track.pointDirection = 'straight';
-                }
-                // どちらもなければ上書きしない
             }
         });
         route.isActive = true;
@@ -885,19 +910,25 @@ class RouteManager {
             // --- ここで必ずstatusをnormalに ---
             track.status = 'normal';
             deactivatedTrackIds.add(track.id);
-            // ダブルクロスの場合はペアごとに解除
-            if (track.type === 'double_cross') {
-                if (typeof step.fromEpIdx === 'number' && typeof step.toEpIdx === 'number') {
-                    track.setPairStatus(step.fromEpIdx, step.toEpIdx, 'normal');
-                    track.setPairStatus(step.toEpIdx, step.fromEpIdx, 'normal');
+            // 分岐器の場合、他のアクティブ進路のstepを再集計
+            if (track.isPoint && (track.type === 'point_left' || track.type === 'point_right')) {
+                // 他のアクティブ進路のstepを集計
+                let otherDirections = [];
+                for (const r of this.routes.values()) {
+                    if (!r.isActive || r.id === routeId) continue;
+                    for (const s of r.points || []) {
+                        if (s.trackId == track.id && (s.direction === 'normal' || s.direction === 'reverse' || s.direction === 'straight' || s.direction === 'branch')) {
+                            otherDirections.push(s.direction);
+                        }
+                    }
                 }
-                // 他のアクティブ進路でこのtrackIdが使われていなければpointDirectionをリセット
-                const isUsedInOtherActive = Array.from(this.routes.values()).some(r =>
-                    r.isActive && r.id !== routeId &&
-                    (r.points || []).some(s => s.trackId == track.id)
-                );
-                if (!isUsedInOtherActive) {
-                    track.pointDirection = 'straight';
+                if (otherDirections.includes('reverse') || otherDirections.includes('branch')) {
+                    track.pointDirection = 'reverse';
+                } else if (otherDirections.includes('normal') || otherDirections.includes('straight')) {
+                    track.pointDirection = 'normal';
+                } else {
+                    // どちらもなければデフォルト
+                    track.pointDirection = 'normal';
                 }
             }
         });
