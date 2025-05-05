@@ -182,19 +182,8 @@ class App {
         });
         
         // 線路パーツボタン
-        // 直線ボタン
-        document.getElementById('straight').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'straight';
-            this.updateTrackPartButtonState('straight');
-            this.setStatusInfo('直線を描画します。最初の点をクリックしてください。');
-        });
+        // --- 個別addEventListenerは削除（partButtonDefs.forEachで一元管理） ---
+        // 完全に削除（partButtonDefs.forEachで一元管理するため不要）
         // 左分岐ポイント
         document.getElementById('point-left').addEventListener('click', () => {
             if (this.appMode !== 'edit' || this.drawMode !== 'place') {
@@ -288,56 +277,13 @@ class App {
         });
         
         // テキストラベルボタンのイベントハンドラ
-        document.getElementById('textLabel').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeTextLabel();
-        });
+        // 完全に削除（partButtonDefs.forEachで一元管理するため不要）
 
         // 連動要素ボタンのイベントリスナーを設定
-        document.getElementById('signalLeverBtn').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeInterlockingElement('signalLever');
-        });
-        
-        document.getElementById('shuntingLeverBtn').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeInterlockingElement('shuntingLever');
-        });
-        
-        document.getElementById('markerLeverBtn').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeInterlockingElement('markerLever');
-        });
-        
-        document.getElementById('throughLeverBtn').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeInterlockingElement('throughLever');
-        });
-        
-        document.getElementById('destButtonBtn').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            this.placeInterlockingElement('destButton');
-        });
+        // 完全に削除（partButtonDefs.forEachで一元管理するため不要）
 
+        // --- trackButtons/onclick上書きも削除（partButtonDefs.forEachで一元管理） ---
+        /*
         // 線路パーツボタンのイベントリスナーを更新
         const trackButtons = [
             'straight',
@@ -350,42 +296,8 @@ class App {
             'straightInsulation'
         ];
 
-        trackButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const originalClick = btn.onclick;
-                btn.onclick = (e) => {
-                    if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                        this.setStatusInfo('配置モードに切り替えてください。');
-                        return;
-                    }
-                    if (originalClick) originalClick.call(this, e);
-                };
-            }
-        });
-
-        // 連動要素ボタンのイベントリスナーを更新
-        const interlockingButtons = [
-            'signalLeverBtn',
-            'shuntingLeverBtn',
-            'markerLeverBtn',
-            'throughLeverBtn',
-            'destButtonBtn'
-        ];
-
-        interlockingButtons.forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) {
-                const originalClick = btn.onclick;
-                btn.onclick = (e) => {
-                    if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                        this.setStatusInfo('配置モードに切り替えてください。');
-                        return;
-                    }
-                    if (originalClick) originalClick.call(this, e);
-                };
-            }
-        });
+        */
+        // --- ここまで削除 ---
 
         // 進路設定関連のボタン
         document.getElementById('autoRouteBtn').addEventListener('click', () => {
@@ -505,6 +417,70 @@ class App {
                 reader.readAsText(file);
             });
             input.click();
+        });
+
+        // 線路パーツ・連動要素ボタンのトグル機能付きイベントリスナー
+        const partButtonDefs = [
+            { id: 'straight', type: 'straight', label: '直線', status: '直線を描画します。最初の点をクリックしてください。' },
+            { id: 'point-left', type: 'point-left', label: '左分岐', status: '左分岐を配置します。' },
+            { id: 'point-right', type: 'point-right', label: '右分岐', status: '右分岐を配置します。' },
+            { id: 'double-slip', type: 'double-slip', label: 'ダブルクロス', status: 'ダブルクロスを配置します。' },
+            { id: 'double-slipX', type: 'double-slipX', label: 'ダブルスリップ', status: 'ダブルスリップを配置します。' },
+            { id: 'crossing', type: 'crossing', label: '交差', status: '交差を配置します。' },
+            { id: 'end', type: 'end', label: 'エンド', status: 'エンドを配置します。' },
+            { id: 'straightInsulation', type: 'straightInsulation', label: '直線絶縁', status: '直線絶縁を配置します。' },
+            { id: 'signalLeverBtn', type: 'signalLever', label: '信号てこ', status: '信号てこを配置します。' },
+            { id: 'shuntingLeverBtn', type: 'shuntingLever', label: '入換てこ', status: '入換てこを配置します。' },
+            { id: 'markerLeverBtn', type: 'markerLever', label: '標識てこ', status: '標識てこを配置します。' },
+            { id: 'throughLeverBtn', type: 'throughLever', label: '開通てこ', status: '開通てこを配置します。' },
+            { id: 'destButtonBtn', type: 'destButton', label: '着点ボタン', status: '着点ボタンを配置します。' }
+        ];
+        partButtonDefs.forEach(def => {
+            const btn = document.getElementById(def.id);
+            if (btn) {
+                btn.addEventListener('click', (e) => {
+                    // すでにactiveならトグル解除（activeを外す）
+                    if (btn.classList.contains('active')) {
+                        this.updateTrackPartButtonState(null);
+                        // 配置系サブルーチンを完全にオフ
+                        this.isPlacingElement = false;
+                        this.placingElementType = null;
+                        this.placingElementInfo = null;
+                        this.currentPreviewElement = null;
+                        if (this._interlockingTrackSelectHandler) {
+                            this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler, true);
+                            this._interlockingTrackSelectHandler = null;
+                        }
+                        this.interlockingManager.editModeState.selectedElement = null;
+                        this.interlockingManager.editModeState.elementType = null;
+                        this.interlockingManager.editModeState.isDragging = false;
+                        this.canvas.draw();
+                        e.stopPropagation();
+                        return;
+                    }
+                    // ここで必ずactive化（トグルON）
+                    this.updateTrackPartButtonState(def.id);
+                    // 連動要素ボタンの場合
+                    if (def.id.endsWith('LeverBtn') || def.id === 'destButtonBtn') {
+                        if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+                            this.setStatusInfo('配置モードに切り替えてください。');
+                            return;
+                        }
+                        this.placeInterlockingElement(def.type);
+                        return;
+                    }
+                    // 線路パーツの場合
+                    if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+                        this.setStatusInfo('配置モードに切り替えてください。');
+                        return;
+                    }
+                    if (this.isPlacingElement) {
+                        this.cancelElementPlacement();
+                    }
+                    this.placingPartType = def.type;
+                    this.setStatusInfo(def.status);
+                });
+            }
         });
     }
 
@@ -656,8 +632,6 @@ class App {
     
     // 連動要素を配置
     placeInterlockingElement(elementType) {
-        // --- 追加: 線路パーツボタンのアクティブ解除 ---
-        this.updateTrackPartButtonState(null);
         // --- 追加: 連動要素ボタンのアクティブ化 ---
         const interlockingButtonMap = {
             signalLever: 'signalLeverBtn',
@@ -1062,6 +1036,21 @@ class App {
         // 現在配置モードが進行中であればキャンセル
         if (this.isPlacingElement) {
             this.cancelElementPlacement();
+        }
+        // 配置モード以外に切り替わった場合は配置系サブルーチンを完全にオフ
+        if (mode !== 'place') {
+            this.isPlacingElement = false;
+            this.placingElementType = null;
+            this.placingElementInfo = null;
+            this.currentPreviewElement = null;
+            if (this._interlockingTrackSelectHandler) {
+                this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler, true);
+                this._interlockingTrackSelectHandler = null;
+            }
+            this.interlockingManager.editModeState.selectedElement = null;
+            this.interlockingManager.editModeState.elementType = null;
+            this.interlockingManager.editModeState.isDragging = false;
+            this.canvas.draw();
         }
         
         // 描画モードを設定
@@ -2095,6 +2084,7 @@ class App {
 
     // パーツボタンの選択状態を更新するヘルパーメソッド
     updateTrackPartButtonState(buttonId) {
+        console.log('[DEBUG] updateTrackPartButtonState called with buttonId:', buttonId);
         // すべてのパーツボタンを非アクティブに設定
         const partButtons = [
             'straight', 'point-left', 'point-right', 'double-slip', 'double-slipX', 'crossing', 'end', 
@@ -2104,19 +2094,43 @@ class App {
         partButtons.forEach(id => {
             const btn = document.getElementById(id);
             if (btn) {
+                console.log('[DEBUG] remove active from', id, btn.classList.contains('active'));
                 btn.classList.remove('active');
             }
         });
-        
         // 選択されたボタンをアクティブに設定
         const selectedBtn = document.getElementById(buttonId);
+        console.log('[DEBUG] selectedBtn', selectedBtn, 'for buttonId', buttonId);
         if (selectedBtn) {
+            console.log('[DEBUG] add active to', buttonId);
             selectedBtn.classList.add('active');
         }
         
         // 編集モードボタンが確実にアクティブになるようにする
         document.getElementById('editModeBtn').classList.add('active');
         document.getElementById('operationModeBtn').classList.remove('active');
+        // どのボタンもactiveでない場合は配置系サブルーチンを完全にオフ
+        const activeBtns = document.querySelectorAll('.toolbar-group button.active');
+        let anyActive = false;
+        activeBtns.forEach(btn => {
+            if (btn.id && (btn.id.endsWith('LeverBtn') || btn.id.endsWith('Btn') || btn.id === 'straight' || btn.id === 'point-left' || btn.id === 'point-right' || btn.id === 'double-slip' || btn.id === 'double-slipX' || btn.id === 'crossing' || btn.id === 'end' || btn.id === 'straightInsulation')) {
+                anyActive = true;
+            }
+        });
+        if (!anyActive) {
+            this.isPlacingElement = false;
+            this.placingElementType = null;
+            this.placingElementInfo = null;
+            this.currentPreviewElement = null;
+            if (this._interlockingTrackSelectHandler) {
+                this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler, true);
+                this._interlockingTrackSelectHandler = null;
+            }
+            this.interlockingManager.editModeState.selectedElement = null;
+            this.interlockingManager.editModeState.elementType = null;
+            this.interlockingManager.editModeState.isDragging = false;
+            this.canvas.draw();
+        }
     }
 
     // ポイントの配置モードを設定
@@ -3364,6 +3378,8 @@ class App {
                 this.interlockingManager.editModeState.isDragging = false;
                 this.setStatusInfo('連動要素の配置を完了しました。');
                 this.canvas.draw();
+                // 完了時のみアクティブ解除
+                this.updateTrackPartButtonState(null);
             });
         }
     }
@@ -3441,7 +3457,7 @@ class App {
                 const label = (typeof elementInfo !== 'undefined' && elementInfo && elementInfo.title) ? elementInfo.title : (type === 'lever' ? 'てこ' : type === 'button' ? '着点ボタン' : '線路');
                 this.setStatusInfo(`${label}を線路に関連付けました。配置を継続できます。`);
                 // --- ここでアクティブ解除 ---
-                this.updateTrackPartButtonState(null);
+                // this.updateTrackPartButtonState(null);
                 // 選択状態を解除
                 this.interlockingManager.editModeState.selectedElement = null;
                 this.interlockingManager.editModeState.elementType = null;
