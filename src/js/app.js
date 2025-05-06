@@ -77,44 +77,29 @@ class App {
     // ツールバーの設定
     setupToolbar() {
         // モード切り替えボタン
-        document.getElementById('editModeBtn').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
+        document.getElementById('editModeBtn').addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setAppMode('edit');
         });
         
-        document.getElementById('operationModeBtn').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
+        document.getElementById('operationModeBtn').addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setAppMode('operation');
         });
         
         // モード選択ボタン
-        document.getElementById('cursorBtn').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
+        document.getElementById('cursorBtn').addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setMode('cursor');
         });
         
-        document.getElementById('connectBtn').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setMode('connect');
         });
         
-        document.getElementById('deleteBtn').addEventListener('click', () => {
-            // 現在配置モードが進行中であればキャンセル
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setMode('delete');
         });
 
@@ -130,7 +115,8 @@ class App {
             cursorBtn.parentNode.insertBefore(placeBtn, cursorBtn.nextSibling);
         }
 
-        placeBtn.addEventListener('click', () => {
+        placeBtn.addEventListener('click', async () => {
+            if (await this.checkPendingPlacementAndPrompt()) return;
             this.setMode('place');
         });
         
@@ -440,7 +426,11 @@ class App {
         partButtonDefs.forEach(def => {
             const btn = document.getElementById(def.id);
             if (btn) {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
+                    if (await this.checkPendingPlacementAndPrompt()) {
+                        e.stopPropagation();
+                        return;
+                    }
                     // --- 追加: どのボタンでも必ず最初にキャンセル ---
                     this.cancelElementPlacement();
                     // すでにactiveならトグル解除（activeを外す）
@@ -3457,6 +3447,32 @@ class App {
     // TrackManagerのリスナー用メソッド
     onTracksChanged() {
         this.updatePointsList();
+    }
+
+    // 未完了配置がある場合の確認メソッド
+    async checkPendingPlacementAndPrompt() {
+        if (this.isPlacingElement || (this.interlockingManager && this.interlockingManager.editModeState.selectedElement)) {
+            const completeBtn = document.querySelector('#selected-properties .complete-interlocking');
+            const result = window.confirm('現在の配置が完了していません。\nOK: 配置を完了\nキャンセル: 配置をキャンセル');
+            if (result) {
+                if (completeBtn) {
+                    completeBtn.click();
+                } else {
+                    this.isPlacingElement = false;
+                    this.placingElementType = null;
+                    this.placingElementInfo = null;
+                    if (this.interlockingManager) {
+                        this.interlockingManager.editModeState.selectedElement = null;
+                        this.interlockingManager.editModeState.elementType = null;
+                        this.interlockingManager.editModeState.isDragging = false;
+                    }
+                }
+            } else {
+                this.cancelElementPlacement();
+            }
+            return true;
+        }
+        return false;
     }
 }
 
