@@ -100,6 +100,12 @@ class RouteManager {
     }
 
     toggleAutoMode() {
+        // 既存進路がある場合は警告
+        if (this.currentMode !== 'auto' && this.routes && this.routes.size > 0) {
+            const ok = window.confirm('既存の進路を消去して自動生成しますか？');
+            if (!ok) return;
+            this.clearRoutes();
+        }
         if (this.currentMode === 'auto') {
             this.exitAutoMode();
         } else {
