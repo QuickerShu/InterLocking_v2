@@ -70,6 +70,8 @@ class App {
 
         // 表示設定トグルボタンの状態を初期化
         this.updateToggleButtonStates();
+
+        this.isInterlockingRepeatMode = false; // 連続配置モード
     }
 
     // ツールバーの設定
@@ -439,6 +441,8 @@ class App {
             const btn = document.getElementById(def.id);
             if (btn) {
                 btn.addEventListener('click', (e) => {
+                    // --- 追加: どのボタンでも必ず最初にキャンセル ---
+                    this.cancelElementPlacement();
                     // すでにactiveならトグル解除（activeを外す）
                     if (btn.classList.contains('active')) {
                         this.updateTrackPartButtonState(null);
@@ -458,6 +462,8 @@ class App {
                         e.stopPropagation();
                         return;
                     }
+                    // --- 追加: 新しい連動要素ボタンを押したときは必ずキャンセル ---
+                    this.cancelElementPlacement();
                     // ここで必ずactive化（トグルON）
                     this.updateTrackPartButtonState(def.id);
                     // 連動要素ボタンの場合
@@ -482,6 +488,16 @@ class App {
                 });
             }
         });
+
+        // 連続配置トグルボタン
+        const repeatBtn = document.getElementById('interlockingRepeatBtn');
+        if (repeatBtn) {
+            repeatBtn.addEventListener('click', () => {
+                this.isInterlockingRepeatMode = !this.isInterlockingRepeatMode;
+                repeatBtn.classList.toggle('active', this.isInterlockingRepeatMode);
+                repeatBtn.textContent = this.isInterlockingRepeatMode ? '連続配置:ON' : '連続配置';
+            });
+        }
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -661,126 +677,78 @@ class App {
         this._isDraggingPreview = false;
         this.placingPartType = elementType;
         // --- ここまで ---
-        
         // 編集モードでのみ処理
         if (this.appMode !== 'edit' || this.drawMode !== 'place') {
             this.setStatusInfo('配置モードに切り替えてください。');
             return;
         }
-        
         // 配置する要素のタイプに応じて処理を分岐
         const elementTypeMap = {
-            // 発点てこ
             'signalLever': { type: 'signal', title: '信号てこ(赤)' },
             'shuntingLever': { type: 'shunting_signal', title: '入換てこ(白)' },
             'markerLever': { type: 'shunting_marker', title: '入換標識てこ(緑)' },
             'throughLever': { type: 'through_lever', title: '開通てこ(黄)' },
-            
-            // 着点ボタン
             'destButton': { type: 'destination_button', title: '着点ボタン' },
-            
-            // 線路絶縁
             'straightInsulation': { type: 'straight', title: '直線絶縁' },
             'crossInsulation': { type: 'cross', title: '絶縁クロス' }
         };
-        
         const elementInfo = elementTypeMap[elementType];
         if (!elementInfo) return;
-        
-        // ステータス表示
-        this.setStatusInfo(`${elementInfo.title}を配置します。配置後、関連付ける線路をクリックしてください。`);
-        
+        this.setStatusInfo(`${elementInfo.title}を配置します。配置後、関連付ける線路（2端点直線）をクリックしてください。`);
         // ユニークIDを生成
-        const id = `${elementType}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        
+        const id = `temp_${elementType}_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         // マウス位置を取得
-        const mousePos = this.getScaledMousePosition(this.canvas.lastMouseMoveEvent || 
-            { clientX: this.canvas.trackCanvas.width / 2, clientY: this.canvas.trackCanvas.height / 2 });
+        const mousePos = this.getScaledMousePosition(this.canvas.lastMouseMoveEvent || { clientX: this.canvas.trackCanvas.width / 2, clientY: this.canvas.trackCanvas.height / 2 });
         const snappedPos = this.snapToGrid(mousePos);
-        
         // インターロッキング要素のタイプに応じて要素を追加
         let addedElement = null;
-        // --- プレビュー要素生成 ---
         if (elementType.includes('Lever')) {
-            // 仮要素はコレクションに追加しない
-            addedElement = {
-                id: id,
-                type: elementInfo.type,
-                x: snappedPos.x,
-                y: snappedPos.y,
-                trackId: null
-            };
-            // プレビュー用インスタンス生成
+            addedElement = { id: id, type: elementInfo.type, x: snappedPos.x, y: snappedPos.y, trackId: null };
             this.currentPreviewElement = new StartLever(id, elementInfo.type, snappedPos.x, snappedPos.y, null);
             this.currentPreviewElement.position = { x: snappedPos.x, y: snappedPos.y };
+            // --- 仮要素はコレクションに追加しない・name/numberはセットしない ---
         } else if (elementType === 'destButton') {
-            addedElement = {
-                id: id,
-                x: snappedPos.x,
-                y: snappedPos.y,
-                trackId: null
-            };
+            addedElement = { id: id, x: snappedPos.x, y: snappedPos.y, trackId: null };
             this.currentPreviewElement = new DestinationButton(id, {x: snappedPos.x, y: snappedPos.y}, null);
             this.currentPreviewElement.position = { x: snappedPos.x, y: snappedPos.y };
+            // 仮要素はコレクションに追加しない・name/numberはセットしない
         } else if (elementType.includes('Insulation')) {
-            // 線路絶縁は従来通り
-            addedElement = this.interlockingManager.addTrackInsulation({
-                id: id,
-                x: snappedPos.x,
-                y: snappedPos.y,
-                type: elementInfo.type,
-                direction: 0
-            });
-            this.currentPreviewElement = null; // 絶縁はプレビュー不要
+            addedElement = this.interlockingManager.addTrackInsulation({ id: id, x: snappedPos.x, y: snappedPos.y, type: elementInfo.type, direction: 0 });
+            this.currentPreviewElement = null;
         }
-        // --- ここまで追加 ---
-        
-        // 要素が追加されたら、ドラッグ操作を開始
         if (addedElement) {
-            // 追加: 仮要素にプリセット名称を付与
-            if (this.interlockingManager && (this.interlockingManager.getNextNumber)) {
-                if (elementType.includes('Lever')) {
-                    const type = elementInfo.type;
-                    const num = this.interlockingManager.counters[type];
-                    addedElement.name = `${this.getLeverTypeName(type)}${num}`;
-                } else if (elementType === 'destButton') {
-                    const num = this.interlockingManager.counters.destButton;
-                    addedElement.name = `着点ボタン${num}`;
-                }
-            }
-            // trackIdはnullで初期化済み
-
+            // 仮要素にはカウンター値を使った名称を付与しない
+            addedElement.name = '';
             // プロパティパネルを即時表示
             const propType = elementType.includes('Lever') ? 'lever' : elementType === 'destButton' ? 'button' : 'insulation';
             this.updateSelectedProperties(addedElement, propType);
-
-            // 後続のクリックイベントをブロックするフラグを設定
+            // キャンセルボタン追加
+            setTimeout(() => {
+                const propPanel = document.getElementById('selected-properties');
+                if (propPanel && !document.getElementById('cancel-interlocking-btn')) {
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.id = 'cancel-interlocking-btn';
+                    cancelBtn.textContent = 'キャンセル';
+                    cancelBtn.style.marginTop = '12px';
+                    cancelBtn.addEventListener('click', () => {
+                        this.cancelElementPlacement();
+                    });
+                    propPanel.appendChild(cancelBtn);
+                }
+            }, 0);
             this.canvas.blockNextClick = true;
-            
-            // 要素を選択状態にする
             this.interlockingManager.editModeState.selectedElement = addedElement;
-            this.interlockingManager.editModeState.elementType = elementType.includes('Lever') ? 'lever' : 
-                                                               elementType === 'destButton' ? 'button' : 'insulation';
-            
-            // ドラッグ状態を設定
+            this.interlockingManager.editModeState.elementType = elementType.includes('Lever') ? 'lever' : elementType === 'destButton' ? 'button' : 'insulation';
             this.interlockingManager.editModeState.isDragging = true;
-            
-            // 最後のマウス位置を保存
             this.interlockingManager.editModeState.lastMouseX = snappedPos.x;
             this.interlockingManager.editModeState.lastMouseY = snappedPos.y;
-            
-            // キャンバスを再描画
             this.canvas.draw();
-            
-            // マウス移動で要素を追従させるハンドラを設定
+            // マウス移動で要素を追従させるハンドラ
             const moveHandler = (e) => {
                 const pos = this.getScaledMousePosition(e);
                 const snappedPos = this.snapToGrid(pos);
-                
-                // 要素の位置を更新
                 addedElement.x = snappedPos.x;
                 addedElement.y = snappedPos.y;
-                // プレビュー要素も追従
                 if (this.currentPreviewElement) {
                     this.currentPreviewElement.x = snappedPos.x;
                     this.currentPreviewElement.y = snappedPos.y;
@@ -789,27 +757,16 @@ class App {
                         this.currentPreviewElement.position.y = snappedPos.y;
                     }
                 }
-                
-                // 最後のマウス位置を更新
                 this.interlockingManager.editModeState.lastMouseX = snappedPos.x;
                 this.interlockingManager.editModeState.lastMouseY = snappedPos.y;
-                
-                // キャンバスを再描画
                 this.canvas.draw();
             };
-            
             const upHandler = (e) => {
-                // マウスアップ時の処理
                 this.interlockingManager.editModeState.isDragging = false;
-                
-                // マウス位置を取得
                 const pos = this.getScaledMousePosition(e);
                 const snappedPos = this.snapToGrid(pos);
-                
-                // 要素の位置を最終確定
                 addedElement.x = snappedPos.x;
                 addedElement.y = snappedPos.y;
-                // プレビュー要素も追従
                 if (this.currentPreviewElement) {
                     this.currentPreviewElement.x = snappedPos.x;
                     this.currentPreviewElement.y = snappedPos.y;
@@ -817,104 +774,94 @@ class App {
                         this.currentPreviewElement.position.x = snappedPos.x;
                         this.currentPreviewElement.position.y = snappedPos.y;
                     }
+                    // 線路指定待ちフラグON
+                    this.currentPreviewElement.isPendingTrackAssign = true;
                 }
-                // プレビュー要素を消す
-                this.currentPreviewElement = null;
-                
-                // イベントリスナーを削除
+                // this.currentPreviewElement = null; ← 削除
                 this.canvas.trackCanvas.removeEventListener('mousemove', moveHandler);
                 this.canvas.trackCanvas.removeEventListener('mouseup', upHandler, true);
-                
-                // 線路選択モードに移行
-                this.setStatusInfo(`${elementInfo.title}を配置しました。関連付ける線路をクリックしてください。`);
-                
-                // selectionTargetを保存
+                this.setStatusInfo(`${elementInfo.title}を配置しました。関連付ける線路（2端点直線）をクリックしてください。`, true);
                 const prevSelectionTarget = this.selectionTarget;
-                // 線路選択のためのクリックイベントを設定
                 const self = this;
                 const localElement = addedElement;
                 const localType = elementType.includes('Lever') ? 'lever' : elementType === 'destButton' ? 'button' : 'insulation';
                 const localPrevSelectionTarget = prevSelectionTarget;
                 const trackSelectHandler = function(e) {
-                    console.log('[DEBUG] trackSelectHandler発火', localElement, localType);
+                    // 右クリックでキャンセル
+                    if (e.button === 2) {
+                        self.cancelElementPlacement();
+                        document.removeEventListener('click', trackSelectHandler, true);
+                        return;
+                    }
                     const mousePos = self.canvas.getMousePosition(e);
                     const clickedTrack = self.canvas.findTrackAtPosition(mousePos.x, mousePos.y);
-                    console.log('[DEBUG] clickedTrack', clickedTrack);
-                    if (clickedTrack) {
-                        // 端点数チェック: 2端点以外は設置不可
-                        if (!Array.isArray(clickedTrack.endpoints) || clickedTrack.endpoints.length !== 2) {
-                            self.setStatusInfo('2端点の直線または絶縁線路にのみてこ・着点ボタンを設置できます。', true);
-                            // 仮要素を削除
-                            if (self.interlockingManager.editModeState.selectedElement) {
-                                const elem = self.interlockingManager.editModeState.selectedElement;
-                                const type = elem.type;
-                                if (type === 'lever') {
-                                    self.interlockingManager.removeStartLever(elem.id);
-                                } else if (type === 'button') {
-                                    self.interlockingManager.removeDestinationButton(elem.id);
-                                }
-                                self.interlockingManager.editModeState.selectedElement = null;
+                    // 2端点の直線線路のみ許可
+                    if (!clickedTrack || !Array.isArray(clickedTrack.endpoints) || clickedTrack.endpoints.length !== 2 || clickedTrack.type !== 'straight') {
+                        self.setStatusInfo('2端点の直線線路のみ関連付けできます。', true);
+                        if (self.interlockingManager.editModeState.selectedElement) {
+                            const elem = self.interlockingManager.editModeState.selectedElement;
+                            const type = elem.type;
+                            if (type === 'lever') {
+                                self.interlockingManager.startLevers = self.interlockingManager.startLevers.filter(l => l.id !== localElement.id);
+                            } else if (type === 'button') {
+                                self.interlockingManager.destinationButtons = self.interlockingManager.destinationButtons.filter(b => b.id !== localElement.id);
                             }
-                            document.removeEventListener('click', trackSelectHandler, true);
-                            self.selectionTarget = localPrevSelectionTarget;
-                            self.updateSelectedProperties(null);
-                            return;
+                            self.interlockingManager.editModeState.selectedElement = null;
                         }
-                        console.log('[DEBUG] element before update', localElement);
-                        localElement.trackId = clickedTrack.id;
-                        if (typeof localElement.endpointIndex !== 'number') {
-                            localElement.endpointIndex = 0;
-                        }
-                        console.log('[DEBUG] trackId/endpointIndex更新', localElement);
-                        // --- ここから本体コレクションに追加 ---
-                        let realElement = null;
-                        if (localType === 'lever') {
-                            realElement = self.interlockingManager.addStartLever({
-                                id: localElement.id,
-                                type: localElement.type,
-                                x: localElement.x,
-                                y: localElement.y,
-                                trackId: localElement.trackId,
-                                name: localElement.name
-                            });
-                        } else if (localType === 'button') {
-                            realElement = self.interlockingManager.addDestinationButton({
-                                id: localElement.id,
-                                x: localElement.x,
-                                y: localElement.y,
-                                trackId: localElement.trackId,
-                                name: localElement.name
-                            });
-                        }
-                        self.interlockingManager.editModeState.selectedElement = realElement;
-                        self.canvas.draw();
-                        // --- ここまで追加 ---
-                        self.updateSelectedProperties(localElement, localType);
-                        self.setStatusInfo('線路を再割り当てしました。');
                         document.removeEventListener('click', trackSelectHandler, true);
                         self.selectionTarget = localPrevSelectionTarget;
+                        self.updateSelectedProperties(null);
+                        return;
+                    }
+                    localElement.trackId = clickedTrack.id;
+                    if (typeof localElement.endpointIndex !== 'number') {
+                        localElement.endpointIndex = 0;
+                    }
+                    let realElement = null;
+                    if (localType === 'lever') {
+                        // 既存の仮要素（同じID）があれば除去
+                        self.interlockingManager.startLevers = self.interlockingManager.startLevers.filter(l => l.id !== localElement.id);
+                        realElement = self.interlockingManager.addStartLever({ id: localElement.id, type: localElement.type, x: localElement.x, y: localElement.y, trackId: localElement.trackId, name: localElement.name });
+                    } else if (localType === 'button') {
+                        // 既存の仮要素（同じID）があれば除去
+                        self.interlockingManager.destinationButtons = self.interlockingManager.destinationButtons.filter(b => b.id !== localElement.id);
+                        // trackId付きで本設追加
+                        realElement = self.interlockingManager.addDestinationButton({ id: localElement.id, x: localElement.x, y: localElement.y, trackId: localElement.trackId, name: localElement.name });
+                        // destinationButtonsコレクションに必ず含まれるようにする
+                        if (!self.interlockingManager.destinationButtons.find(b => b.id === realElement.id)) {
+                            self.interlockingManager.destinationButtons.push(realElement);
+                        }
+                    }
+                    self.interlockingManager.editModeState.selectedElement = realElement;
+                    self.canvas.draw();
+                    self.updateSelectedProperties(realElement, localType); // ←本設要素でパネル更新
+                    self.setStatusInfo('線路に関連付けました。');
+                    document.removeEventListener('click', trackSelectHandler, true);
+                    self.selectionTarget = localPrevSelectionTarget;
+                    // 連続配置モードなら再度同じ要素の仮配置
+                    if (self.isInterlockingRepeatMode) {
+                        setTimeout(() => {
+                            self.placeInterlockingElement(elementType);
+                        }, 0);
+                    } else {
+                        self.isPlacingElement = false;
+                        self.placingElementType = null;
+                        self.placingElementInfo = null;
+                        self.currentPreviewElement = null;
+                        self.interlockingManager.editModeState.isDragging = false;
+                        self.updateTrackPartButtonState(null);
+                    }
+                    // 線路指定完了: 仮要素の強調解除＆消去
+                    if (self.currentPreviewElement) {
+                        self.currentPreviewElement.isPendingTrackAssign = false;
+                        self.currentPreviewElement = null;
                     }
                 };
-                this._interlockingTrackSelectHandler = trackSelectHandler;
-                this.canvas.trackCanvas.addEventListener('click', this._interlockingTrackSelectHandler, true);
+                self._interlockingTrackSelectHandler = trackSelectHandler;
+                self.canvas.trackCanvas.addEventListener('click', self._interlockingTrackSelectHandler, true);
             };
-            
-            // イベントリスナーをキャプチャフェーズで設定して確実に処理
             this.canvas.trackCanvas.addEventListener('mousemove', moveHandler);
             this.canvas.trackCanvas.addEventListener('mouseup', upHandler, { once: true, capture: true });
-            // 配置直後に自動で線路選択モードに入る
-            setTimeout(() => {
-                let type = 'insulation';
-                if (elementType.includes('Lever')) type = 'lever';
-                else if (elementType === 'destButton') type = 'button';
-                this.startTrackReassignment(addedElement, type);
-                // 配置後も選択状態やモードはクリアしない（連続配置のため）
-                // this.canvas.selectedTrack = null;
-                // this.canvas.selectedEndpoint = null;
-                // this.interlockingManager.editModeState.selectedElement = null;
-                // this.interlockingManager.editModeState.elementType = null;
-                // this.canvas.draw();
-            }, 0);
         }
     }
     
@@ -939,7 +886,7 @@ class App {
             this._interlockingUpHandler = null;
         }
         if (this._interlockingTrackSelectHandler) {
-            this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler);
+            this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler, true);
             this._interlockingTrackSelectHandler = null;
         }
         // 未確定の一時要素があればコレクションから削除
@@ -947,15 +894,22 @@ class App {
             const elem = this.interlockingManager.editModeState.selectedElement;
             const type = this.interlockingManager.editModeState.elementType;
             if (type === 'lever') {
-                this.interlockingManager.startLevers = this.interlockingManager.startLevers.filter(l => l !== elem);
+                this.interlockingManager.startLevers = this.interlockingManager.startLevers.filter(l => l.id !== elem.id);
             } else if (type === 'button') {
-                this.interlockingManager.destinationButtons = this.interlockingManager.destinationButtons.filter(b => b !== elem);
+                this.interlockingManager.destinationButtons = this.interlockingManager.destinationButtons.filter(b => b.id !== elem.id);
             } else if (type === 'insulation') {
-                this.interlockingManager.trackInsulations = this.interlockingManager.trackInsulations.filter(i => i !== elem);
+                this.interlockingManager.trackInsulations = this.interlockingManager.trackInsulations.filter(i => i.id !== elem.id);
             }
             this.interlockingManager.editModeState.selectedElement = null;
             this.interlockingManager.editModeState.elementType = null;
             this.interlockingManager.editModeState.isDragging = false;
+        }
+        // 仮要素のゴミが残っていないか全コレクションを再チェック（IDが未確定なものも含めて）
+        if (this.interlockingManager) {
+            // 'temp_' で始まるIDのみ一掃
+            this.interlockingManager.startLevers = this.interlockingManager.startLevers.filter(l => !(typeof l.id === 'string' && l.id.startsWith('temp_')));
+            this.interlockingManager.destinationButtons = this.interlockingManager.destinationButtons.filter(b => !(typeof b.id === 'string' && b.id.startsWith('temp_')));
+            this.interlockingManager.trackInsulations = this.interlockingManager.trackInsulations.filter(i => !(typeof i.id === 'string' && i.id.startsWith('temp_')));
         }
         // --- 追加ここまで ---
 
@@ -1474,13 +1428,11 @@ class App {
         // トラックキャンバスの右クリックイベント
         this.canvas.trackCanvas.addEventListener('contextmenu', (e) => {
             e.preventDefault(); // デフォルトのコンテキストメニューを表示しない
-            
-            // 配置中の場合は配置をキャンセル
-            if (this.isPlacingElement) {
+            // 配置中や仮要素がある場合はキャンセル
+            if (this.isPlacingElement || this.currentPreviewElement || this._interlockingTrackSelectHandler) {
                 this.cancelElementPlacement();
                 return;
             }
-
             // 直線配置中の場合は配置をキャンセル
             if (this.canvas.drawState && this.canvas.drawState.isDrawing) {
                 this.canvas.drawState = {
@@ -1491,6 +1443,19 @@ class App {
                 this.canvas.draw();
                 this.setStatusInfo('直線の配置をキャンセルしました');
                 return;
+            }
+        });
+        // --- 追加: ドキュメント全体で右クリックキャンセル ---
+        document.addEventListener('contextmenu', (e) => {
+            if (this.isPlacingElement || this.currentPreviewElement || this._interlockingTrackSelectHandler) {
+                e.preventDefault();
+                this.cancelElementPlacement();
+            }
+        });
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 2 && (this.isPlacingElement || this.currentPreviewElement || this._interlockingTrackSelectHandler)) {
+                e.preventDefault();
+                this.cancelElementPlacement();
             }
         });
         
@@ -1731,11 +1696,19 @@ class App {
 
     // ステータス情報の表示
     setStatusInfo(message, isError = false) {
-        this.statusInfo.textContent = message;
-        if (isError) {
-            this.statusInfo.style.color = 'var(--danger-color)';
-        } else {
-            this.statusInfo.style.color = 'white';
+        const statusBar = document.getElementById('status-bar');
+        if (statusBar) {
+            statusBar.textContent = message;
+            if (isError) {
+                statusBar.style.color = '#d32f2f';
+                statusBar.style.backgroundColor = '#fff3f3';
+            } else if (message.includes('関連付ける線路')) {
+                statusBar.style.color = '#ff9800';
+                statusBar.style.backgroundColor = '#fffbe6';
+            } else {
+                statusBar.style.color = '';
+                statusBar.style.backgroundColor = '';
+            }
         }
     }
 

@@ -154,6 +154,21 @@ class DestinationButton extends InterlockingElement {
      */
     draw(ctx, scale = 1) {
         ctx.save();  // 現在の描画状態を保存
+        // --- 線路指定待ち強調 ---
+        if (this.isPendingTrackAssign) {
+            const now = Date.now();
+            const blink = Math.floor(now / 500) % 2 === 0;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(this.x ?? 0, this.y ?? 0, 16 / scale, 0, Math.PI * 2);
+            ctx.lineWidth = 4 / scale;
+            ctx.strokeStyle = blink ? 'rgba(255,128,0,0.9)' : 'rgba(255,200,0,0.7)';
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        // --- ここまで ---
         // 状態に応じた色
         ctx.fillStyle = BUTTON_COLORS[this.state];
         ctx.strokeStyle = '#999999';  // 境界線は暗めのグレー
@@ -221,6 +236,22 @@ class StartLever extends InterlockingElement {
      */
     draw(ctx, scale = 1) {
         ctx.save();  // 現在の描画状態を保存
+        
+        // --- 線路指定待ち強調 ---
+        if (this.isPendingTrackAssign) {
+            const now = Date.now();
+            const blink = Math.floor(now / 500) % 2 === 0;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(this.x ?? 0, this.y ?? 0, 16 / scale, 0, Math.PI * 2);
+            ctx.lineWidth = 4 / scale;
+            ctx.strokeStyle = blink ? 'rgba(255,128,0,0.9)' : 'rgba(255,200,0,0.7)';
+            ctx.setLineDash([6, 6]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        }
+        // --- ここまで ---
         
         // てこの位置に移動して回転
         ctx.translate(this.x, this.y);
