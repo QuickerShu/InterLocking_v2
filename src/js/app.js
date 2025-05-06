@@ -709,6 +709,7 @@ class App {
         if (addedElement) {
             // 仮要素にはカウンター値を使った名称を付与しない
             addedElement.name = '';
+            this.isPlacingElement = true;
             // プロパティパネルを即時表示
             const propType = elementType.includes('Lever') ? 'lever' : elementType === 'destButton' ? 'button' : 'insulation';
             this.updateSelectedProperties(addedElement, propType);
@@ -777,12 +778,16 @@ class App {
                 const localType = elementType.includes('Lever') ? 'lever' : elementType === 'destButton' ? 'button' : 'insulation';
                 const localPrevSelectionTarget = prevSelectionTarget;
                 const trackSelectHandler = function(e) {
+                    e.stopPropagation();
                     // 右クリックでキャンセル
                     if (e.button === 2) {
+                        self.isPlacingElement = false;
                         self.cancelElementPlacement();
                         document.removeEventListener('click', trackSelectHandler, true);
                         return;
                     }
+                    // すでに本設要素化されていれば何もしない
+                    if (!self.isPlacingElement) return;
                     const mousePos = self.canvas.getMousePosition(e);
                     const clickedTrack = self.canvas.findTrackAtPosition(mousePos.x, mousePos.y);
                     // 2端点の直線線路のみ許可
@@ -2048,7 +2053,6 @@ class App {
 
     // パーツボタンの選択状態を更新するヘルパーメソッド
     updateTrackPartButtonState(buttonId) {
-        console.log('[DEBUG] updateTrackPartButtonState called with buttonId:', buttonId);
         // すべてのパーツボタンを非アクティブに設定
         const partButtons = [
             'straight', 'point-left', 'point-right', 'double-slip', 'double-slipX', 'crossing', 'end', 
@@ -2058,15 +2062,12 @@ class App {
         partButtons.forEach(id => {
             const btn = document.getElementById(id);
             if (btn) {
-                console.log('[DEBUG] remove active from', id, btn.classList.contains('active'));
                 btn.classList.remove('active');
             }
         });
         // 選択されたボタンをアクティブに設定
         const selectedBtn = document.getElementById(buttonId);
-        console.log('[DEBUG] selectedBtn', selectedBtn, 'for buttonId', buttonId);
         if (selectedBtn) {
-            console.log('[DEBUG] add active to', buttonId);
             selectedBtn.classList.add('active');
         }
         
@@ -3146,7 +3147,7 @@ class App {
 
         // プロパティHTMLを設定
         propertiesContainer.innerHTML = propertiesHTML;
-        console.log('[DEBUG] propertiesHTML set', propertiesHTML);
+        // console.log('[DEBUG] propertiesHTML set', propertiesHTML);
 
         // イベントリスナーを設定
         this.setupPropertyEventListeners(realElement, type);
@@ -3280,7 +3281,7 @@ class App {
      */
     setupPropertyEventListeners(element, type) {
         const container = this.selectedProperties;
-        console.log('[DEBUG] setupPropertyEventListeners', container, element, type);
+        // console.log('[DEBUG] setupPropertyEventListeners', container, element, type);
 
         // 名前変更イベントリスナー
         const nameInput = container.querySelector(`.${type}-name`);
@@ -3316,10 +3317,10 @@ class App {
 
         // 線路再割り当てボタン
         const reassignBtn = container.querySelector('.reassign-track');
-        console.log('[DEBUG] reassignBtn', reassignBtn);
+        // console.log('[DEBUG] reassignBtn', reassignBtn);
         if (reassignBtn) {
             reassignBtn.addEventListener('click', () => {
-                console.log('[DEBUG] reassign-trackボタン押下', element, type);
+                // console.log('[DEBUG] reassign-trackボタン押下', element, type);
                 this.startTrackReassignment(element, type);
             });
         }
@@ -3382,11 +3383,17 @@ class App {
         const prevSelectionTarget = this.selectionTarget;
         this.selectionTarget = 'track';
         document.getElementById('selectTrackRadio').checked = true;
+        // 既存のtrackSelectHandlerを必ず解除
+        if (this._interlockingTrackSelectHandler) {
+            this.canvas.trackCanvas.removeEventListener('click', this._interlockingTrackSelectHandler, true);
+            this._interlockingTrackSelectHandler = null;
+        }
+        this.isPlacingElement = true; // 再割り当て開始時にON
         const trackSelectHandler = (e) => {
-            console.log('[DEBUG] trackSelectHandler発火', element, type);
+            // console.log('[DEBUG] trackSelectHandler発火', element, type);
             const mousePos = this.canvas.getMousePosition(e);
             const clickedTrack = this.canvas.findTrackAtPosition(mousePos.x, mousePos.y);
-            console.log('[DEBUG] clickedTrack', clickedTrack);
+            // console.log('[DEBUG] clickedTrack', clickedTrack);
             if (clickedTrack) {
                 // 端点数チェック: 2端点以外は設置不可
                 if (!Array.isArray(clickedTrack.endpoints) || clickedTrack.endpoints.length !== 2) {
@@ -3408,14 +3415,14 @@ class App {
                     return;
                 }
                 // 選択された線路に要素を関連付け
-                console.log('[DEBUG] element before update', element);
+                // console.log('[DEBUG] element before update', element);
                 element.trackId = clickedTrack.id;
                 // endpointIndexが未定義なら0をセット
                 if (typeof element.endpointIndex !== 'number') {
                     element.endpointIndex = 0;
                 }
                 // プロパティパネルも即時更新
-                console.log('[DEBUG] trackId/endpointIndex更新', element);
+                // console.log('[DEBUG] trackId/endpointIndex更新', element);
                 this.updateSelectedProperties(element, type);
                 // 配置完了メッセージを表示
                 const label = (typeof elementInfo !== 'undefined' && elementInfo && elementInfo.title) ? elementInfo.title : (type === 'lever' ? 'てこ' : type === 'button' ? '着点ボタン' : '線路');
@@ -3429,8 +3436,10 @@ class App {
                 this.canvas.draw();
                 // イベントリスナーを削除
                 this.canvas.trackCanvas.removeEventListener('click', trackSelectHandler);
+                this.isPlacingElement = false; // 必ずOFF
             }
         };
+        this._interlockingTrackSelectHandler = trackSelectHandler;
         this.canvas.trackCanvas.addEventListener('click', trackSelectHandler);
     }
 
