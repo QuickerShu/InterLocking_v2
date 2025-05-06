@@ -256,19 +256,18 @@ class InterlockingManager {
         if (this.editModeState.isDragging) {
             this.editModeState.isDragging = false;
             if (this.editModeState.selectedElement) {
-                const element = this.editModeState.selectedElement;
-                // 最も近い線路を見つけて関連付け
-                if (window.app) {
-                    const nearestTrackId = window.app.getNearestTrackId(element.position);
-                    if (nearestTrackId) {
-                        element.trackId = nearestTrackId;
-                        // 追加: destinationButtons配列内の該当ボタンにもtrackIdを反映
-                        if (element.type === 'destButton' && Array.isArray(this.destinationButtons)) {
-                            const btn = this.destinationButtons.find(b => b.id === element.id);
-                            if (btn) btn.trackId = nearestTrackId;
-                        }
-                    }
-                }
+                // --- trackId自動設定を削除 ---
+                //const element = this.editModeState.selectedElement;
+                //if (window.app) {
+                //    const nearestTrackId = window.app.getNearestTrackId(element.position);
+                //    if (nearestTrackId) {
+                //        element.trackId = nearestTrackId;
+                //        if (element.type === 'destButton' && Array.isArray(this.destinationButtons)) {
+                //            const btn = this.destinationButtons.find(b => b.id === element.id);
+                //            if (btn) btn.trackId = nearestTrackId;
+                //        }
+                //    }
+                //}
             }
             this.editModeState.selectedElement = null;
             this.editModeState.elementType = null;
@@ -847,24 +846,28 @@ class InterlockingManager {
      * 発点てこを追加
      */
     addStartLever(options) {
-        const { id, type, x, y, trackId, endpointIndex } = options;
-        
-        // 既存のIDチェック
-        if (this.startLevers.some(lever => lever.id === id)) {
-            throw new Error(`ID ${id} の発点てこは既に存在します`);
+        const type = options.type;
+        if (!this.counters[type]) this.counters[type] = 1;
+        // 仮IDの場合は本設IDを発行
+        let id = options.id;
+        if (typeof id === 'string' && id.startsWith('temp_')) {
+            id = `${type}Lever_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         }
-        
-        // てこの作成
-        const lever = new StartLever(id, type, x, y, trackId, this.getNextNumber(type));
-        lever.endpointIndex = endpointIndex;
-        console.log('[DEBUG:addStartLever] options.endpointIndex:', endpointIndex, '-> lever.endpointIndex:', lever.endpointIndex);
-        
-        // コレクションに追加
+        // 既存IDがあればカウンターや名称を進めず、trackId/endpointIndexだけ更新してreturn
+        const existing = this.startLevers.find(l => l.id === id);
+        if (existing) {
+            if (options.trackId !== undefined) existing.trackId = options.trackId;
+            if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
+            // nameは絶対に上書きしない
+            return existing;
+        }
+        // 新規の場合のみカウンター進めて名称付与
+        const name = `${window.app.getLeverTypeName(type)}${this.counters[type]}`;
+        const lever = new StartLever(id, type, options.x, options.y, options.trackId, this.counters[type]);
+        lever.name = name;
+        lever.endpointIndex = options.endpointIndex;
         this.startLevers.push(lever);
-        
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        
+        this.counters[type]++;
         return lever;
     }
 
@@ -872,24 +875,27 @@ class InterlockingManager {
      * 着点ボタンを追加
      */
     addDestinationButton(options) {
-        const { id, x, y, trackId, endpointIndex } = options;
-        
-        // 既存のIDチェック
-        if (this.destinationButtons.some(button => button.id === id)) {
-            throw new Error(`ID ${id} の着点ボタンは既に存在します`);
+        if (!this.counters.destButton) this.counters.destButton = 1;
+        // 仮IDの場合は本設IDを発行
+        let id = options.id;
+        if (typeof id === 'string' && id.startsWith('temp_')) {
+            id = `destButton_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         }
-        
-        // ボタンの作成
-        const button = new DestinationButton(id, { x, y }, trackId, this.getNextNumber('destButton'));
-        button.endpointIndex = endpointIndex;
-        console.log('[DEBUG:addDestinationButton] options.endpointIndex:', endpointIndex, '-> button.endpointIndex:', button.endpointIndex);
-        
-        // コレクションに追加
+        // 既存IDがあればカウンターや名称を進めず、trackId/endpointIndexだけ更新してreturn
+        const existing = this.destinationButtons.find(b => b.id === id);
+        if (existing) {
+            if (options.trackId !== undefined) existing.trackId = options.trackId;
+            if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
+            // nameは絶対に上書きしない
+            return existing;
+        }
+        // 新規の場合のみカウンター進めて名称付与
+        const name = `着点ボタン${this.counters.destButton}`;
+        const button = new DestinationButton(id, {x: options.x, y: options.y}, options.trackId, this.counters.destButton);
+        button.name = name;
+        button.endpointIndex = options.endpointIndex;
         this.destinationButtons.push(button);
-        
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        
+        this.counters.destButton++;
         return button;
     }
 }
