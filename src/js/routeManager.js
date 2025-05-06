@@ -286,6 +286,10 @@ class RouteManager {
                 (allCandidates || []).forEach(route => window.routeManager.addRoute(route));
                 if (typeof window.routeManager.updateRouteList === 'function') window.routeManager.updateRouteList();
                 panel.innerHTML = '<p>進路候補を登録しました。</p>';
+                // 進路登録後に自動モードを終了
+                if (typeof window.routeManager.exitAutoMode === 'function') {
+                    window.routeManager.exitAutoMode();
+                }
             };
             panel.appendChild(registerBtn);
             // 候補リスト
@@ -362,6 +366,14 @@ class RouteManager {
 
         // 進路候補をUIに反映
         this.routeCandidates = allCandidates;
+        // --- 追加: 候補が0件ならワーニングを出して自動モード終了 ---
+        if (!allCandidates || allCandidates.length === 0) {
+            alert('経路候補が見つかりませんでした。条件を見直してください。');
+            if (typeof this.exitAutoMode === 'function') {
+                this.exitAutoMode();
+            }
+            return;
+        }
 
         // 追加: 候補として残った経路の繋がりをデバッグログで出力
         allCandidates.forEach((candidate, idx) => {
@@ -941,6 +953,28 @@ class RouteManager {
             console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
         }
         // --- ここまで追加 ---
+    }
+
+    /**
+     * すべての進路を削除
+     */
+    clearRoutes() {
+        if (this.routes && typeof this.routes.clear === 'function') {
+            this.routes.clear();
+        } else if (Array.isArray(this.routes)) {
+            this.routes = [];
+        }
+        this.updateRouteList && this.updateRouteList();
+    }
+
+    exitAutoMode() {
+        this.currentMode = 'none';
+        if (this.autoRouteBtn) this.autoRouteBtn.classList.remove('active');
+        if (this.manualRouteBtn) this.manualRouteBtn.classList.remove('active');
+        document.body.style.cursor = '';
+        this.routeCandidates = [];
+        // 必要ならガイダンスや候補リストもリセット
+        // 例: if (this.routeList) this.routeList.innerHTML = '';
     }
 }
 
