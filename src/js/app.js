@@ -823,6 +823,7 @@ class App {
                         }
                     }
                     self.interlockingManager.editModeState.selectedElement = realElement;
+                    self.currentPreviewElement = null;
                     self.canvas.draw();
                     self.updateSelectedProperties(realElement, localType); // ←本設要素でパネル更新
                     self.setStatusInfo('線路に関連付けました。');
