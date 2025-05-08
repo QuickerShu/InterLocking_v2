@@ -173,96 +173,96 @@ class App {
         // --- 個別addEventListenerは削除（partButtonDefs.forEachで一元管理） ---
         // 完全に削除（partButtonDefs.forEachで一元管理するため不要）
         // 左分岐ポイント
-        document.getElementById('point-left').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'point-left';
-            this.updateTrackPartButtonState('point-left');
-            this.setStatusInfo('左分岐を配置します。');
-        });
+        // document.getElementById('point-left').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'point-left';
+        //     this.updateTrackPartButtonState('point-left');
+        //     this.setStatusInfo('左分岐を配置します。');
+        // });
         // 右分岐ポイント
-        document.getElementById('point-right').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'point-right';
-            this.updateTrackPartButtonState('point-right');
-            this.setStatusInfo('右分岐を配置します。');
-        });
+        // document.getElementById('point-right').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'point-right';
+        //     this.updateTrackPartButtonState('point-right');
+        //     this.setStatusInfo('右分岐を配置します。');
+        // });
         // ダブルクロス
-        document.getElementById('double-slip').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'double-slip';
-            this.updateTrackPartButtonState('double-slip');
-            this.setStatusInfo('ダブルクロスを配置します。');
-        });
+        // document.getElementById('double-slip').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'double-slip';
+        //     this.updateTrackPartButtonState('double-slip');
+        //     this.setStatusInfo('ダブルクロスを配置します。');
+        // });
         // ダブルスリップ
-        document.getElementById('double-slipX').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'double-slipX';
-            this.updateTrackPartButtonState('double-slipX');
-            this.setStatusInfo('ダブルスリップを配置します。');
-        });
+        // document.getElementById('double-slipX').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'double-slipX';
+        //     this.updateTrackPartButtonState('double-slipX');
+        //     this.setStatusInfo('ダブルスリップを配置します。');
+        // });
         // 交差
-        document.getElementById('crossing').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'crossing';
-            this.updateTrackPartButtonState('crossing');
-            this.setStatusInfo('交差を配置します。');
-        });
+        // document.getElementById('crossing').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'crossing';
+        //     this.updateTrackPartButtonState('crossing');
+        //     this.setStatusInfo('交差を配置します。');
+        // });
         // エンド
-        document.getElementById('end').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'end';
-            this.updateTrackPartButtonState('end');
-            this.setStatusInfo('エンドを配置します。');
-        });
+        // document.getElementById('end').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'end';
+        //     this.updateTrackPartButtonState('end');
+        //     this.setStatusInfo('エンドを配置します。');
+        // });
         // 線路絶縁
-        document.getElementById('straightInsulation').addEventListener('click', () => {
-            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                this.setStatusInfo('配置モードに切り替えてください。');
-                return;
-            }
-            if (this.isPlacingElement) {
-                this.cancelElementPlacement();
-            }
-            this.placingPartType = 'straightInsulation';
-            this.updateTrackPartButtonState('straightInsulation');
-            this.setStatusInfo('直線絶縁を配置します。');
-        });
+        // document.getElementById('straightInsulation').addEventListener('click', () => {
+        //     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+        //         this.setStatusInfo('配置モードに切り替えてください。');
+        //         return;
+        //     }
+        //     if (this.isPlacingElement) {
+        //         this.cancelElementPlacement();
+        //     }
+        //     this.placingPartType = 'straightInsulation';
+        //     this.updateTrackPartButtonState('straightInsulation');
+        //     this.setStatusInfo('直線絶縁を配置します。');
+        // });
         
         // テキストラベルボタンのイベントハンドラ
         // 完全に削除（partButtonDefs.forEachで一元管理するため不要）
@@ -424,6 +424,8 @@ class App {
             { id: 'destButtonBtn', type: 'destButton', label: '着点ボタン', status: '着点ボタンを配置します。' }
         ];
         partButtonDefs.forEach(def => {
+            // 連動要素ボタンはinterlockingButtonsループで処理するのでここではスキップ
+            if (def.id.endsWith('LeverBtn') || def.id === 'destButtonBtn') return;
             const btn = document.getElementById(def.id);
             if (btn) {
                 btn.addEventListener('click', async (e) => {
@@ -456,15 +458,6 @@ class App {
                     this.cancelElementPlacement();
                     // ここで必ずactive化（トグルON）
                     this.updateTrackPartButtonState(def.id);
-                    // 連動要素ボタンの場合
-                    if (def.id.endsWith('LeverBtn') || def.id === 'destButtonBtn') {
-                        if (this.appMode !== 'edit' || this.drawMode !== 'place') {
-                            this.setStatusInfo('配置モードに切り替えてください。');
-                            return;
-                        }
-                        this.placeInterlockingElement(def.type);
-                        return;
-                    }
                     // 線路パーツの場合
                     if (this.appMode !== 'edit' || this.drawMode !== 'place') {
                         this.setStatusInfo('配置モードに切り替えてください。');
@@ -488,6 +481,52 @@ class App {
                 repeatBtn.textContent = this.isInterlockingRepeatMode ? '連続配置:ON' : '連続配置';
             });
         }
+
+        // パーツ配置ボタンの定義
+        const partButtons = [
+            { id: 'point-left', type: 'point-left', msg: '左分岐を配置します。' },
+            { id: 'point-right', type: 'point-right', msg: '右分岐を配置します。' },
+            { id: 'double-slip', type: 'double-slip', msg: 'ダブルクロスを配置します。' },
+            { id: 'double-slipX', type: 'double-slipX', msg: 'ダブルスリップを配置します。' },
+            { id: 'crossing', type: 'crossing', msg: '交差を配置します。' },
+            { id: 'end', type: 'end', msg: 'エンドを配置します。' },
+            { id: 'straightInsulation', type: 'straightInsulation', msg: '直線絶縁を配置します。' }
+        ];
+        partButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', this.createPartButtonHandler(btn.type, btn.msg));
+            }
+        });
+
+        // 連動要素ボタンの共通ハンドラ生成関数
+        const interlockingButtons = [
+            { id: 'signalLeverBtn', type: 'signalLever' },
+            { id: 'shuntingLeverBtn', type: 'shuntingLever' },
+            { id: 'markerLeverBtn', type: 'markerLever' },
+            { id: 'throughLeverBtn', type: 'throughLever' },
+            { id: 'destButtonBtn', type: 'destButton' }
+        ];
+        interlockingButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', this.createInterlockingButtonHandler(btn.id, btn.type));
+            }
+        });
+
+        // 表示切替ボタンの定義
+        const toggleButtons = [
+            { id: 'toggleGridBtn', method: 'toggleGrid' },
+            { id: 'toggleEndpointsBtn', method: 'toggleEndpoints' },
+            { id: 'toggleConnectionsBtn', method: 'toggleConnections' },
+            { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' }
+        ];
+        toggleButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', this.createToggleButtonHandler(btn.method, btn.id));
+            }
+        });
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -3483,6 +3522,47 @@ class App {
             return true;
         }
         return false;
+    }
+
+    // ... AppクラスのsetupToolbarの外に ...
+    createPartButtonHandler(type, statusMsg) {
+        return () => {
+            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+                this.setStatusInfo('配置モードに切り替えてください。');
+                return;
+            }
+            if (this.isPlacingElement) {
+                this.cancelElementPlacement();
+            }
+            this.placingPartType = type;
+            this.updateTrackPartButtonState(type);
+            this.setStatusInfo(statusMsg);
+        };
+    }
+
+    // 連動要素ボタンの共通ハンドラ生成関数
+    createInterlockingButtonHandler(btnId, type) {
+        return async (e) => {
+            if (await this.checkPendingPlacementAndPrompt()) {
+                e.stopPropagation();
+                return;
+            }
+            this.cancelElementPlacement();
+            this.updateTrackPartButtonState(btnId);
+            if (this.appMode !== 'edit' || this.drawMode !== 'place') {
+                this.setStatusInfo('配置モードに切り替えてください。');
+                return;
+            }
+            this.placeInterlockingElement(type);
+        };
+    }
+
+    // 表示切替ボタンの共通ハンドラ生成関数
+    createToggleButtonHandler(canvasMethod, btnId) {
+        return () => {
+            this.canvas[canvasMethod]();
+            document.getElementById(btnId).classList.toggle('active');
+        };
     }
 }
 
