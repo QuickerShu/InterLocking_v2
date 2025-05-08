@@ -76,48 +76,64 @@ class App {
 
     // ツールバーの設定
     setupToolbar() {
-        // モード切り替えボタン
-        document.getElementById('editModeBtn').addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setAppMode('edit');
-        });
-        
-        document.getElementById('operationModeBtn').addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setAppMode('operation');
-        });
-        
-        // モード選択ボタン
-        document.getElementById('cursorBtn').addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setMode('cursor');
-        });
-        
-        document.getElementById('connectBtn').addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setMode('connect');
-        });
-        
-        document.getElementById('deleteBtn').addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setMode('delete');
-        });
-
-        // 配置モードボタンを追加
-        const placeBtn = document.createElement('button');
-        placeBtn.id = 'placeBtn';
-        placeBtn.textContent = '配置';
-        placeBtn.title = 'パーツを配置するモード';
-        
-        // cursorBtnの後に挿入
-        const cursorBtn = document.getElementById('cursorBtn');
-        if (cursorBtn && cursorBtn.parentNode) {
-            cursorBtn.parentNode.insertBefore(placeBtn, cursorBtn.nextSibling);
+        // --- 配置ボタン（placeBtn）がなければ生成・挿入 ---
+        let placeBtn = document.getElementById('placeBtn');
+        if (!placeBtn) {
+            placeBtn = document.createElement('button');
+            placeBtn.id = 'placeBtn';
+            placeBtn.textContent = '配置';
+            placeBtn.title = 'パーツを配置するモード';
+            const cursorBtn = document.getElementById('cursorBtn');
+            if (cursorBtn && cursorBtn.parentNode) {
+                cursorBtn.parentNode.insertBefore(placeBtn, cursorBtn.nextSibling);
+            } else if (this.toolbar) {
+                this.toolbar.appendChild(placeBtn);
+            }
         }
 
-        placeBtn.addEventListener('click', async () => {
-            if (await this.checkPendingPlacementAndPrompt()) return;
-            this.setMode('place');
+        // --- 回転ボタンの共通ハンドラ ---
+        const rotateButtons = [
+            { id: 'rotateClockwiseBtn', angle: 90 },
+            { id: 'rotateCounterBtn', angle: -90 }
+        ];
+        rotateButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', this.createRotateButtonHandler(btn.angle));
+            }
+        });
+
+        // --- モード切替・描画モード切替ボタンの共通ハンドラ ---
+        const modeButtons = [
+            { id: 'editModeBtn', method: () => this.setAppMode('edit') },
+            { id: 'operationModeBtn', method: () => this.setAppMode('operation') },
+            { id: 'cursorBtn', method: () => this.setMode('cursor') },
+            { id: 'connectBtn', method: () => this.setMode('connect') },
+            { id: 'deleteBtn', method: () => this.setMode('delete') },
+            { id: 'placeBtn', method: () => this.setMode('place') }
+        ];
+        modeButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', async () => {
+                    if (await this.checkPendingPlacementAndPrompt()) return;
+                    btn.method();
+                });
+            }
+        });
+
+        // --- 選択対象ラジオボタンの共通ハンドラ ---
+        const selectionRadios = [
+            { id: 'selectTrackRadio', value: 'track' },
+            { id: 'selectElementRadio', value: 'element' }
+        ];
+        selectionRadios.forEach(radio => {
+            const el = document.getElementById(radio.id);
+            if (el) {
+                el.addEventListener('change', () => {
+                    if (el.checked) this.selectionTarget = radio.value;
+                });
+            }
         });
         
         // 表示設定ボタン
@@ -153,21 +169,6 @@ class App {
                 this.showCanvasSizeDialog();
             });
         }
-        
-        // 回転ボタン
-        document.getElementById('rotateClockwiseBtn').addEventListener('click', () => {
-            if (this.canvas.selectedTrack) {
-                this.canvas.selectedTrack.rotate(90);
-                this.canvas.draw();
-            }
-        });
-        
-        document.getElementById('rotateCounterBtn').addEventListener('click', () => {
-            if (this.canvas.selectedTrack) {
-                this.canvas.selectedTrack.rotate(-90);
-                this.canvas.draw();
-            }
-        });
         
         // 線路パーツボタン
         // --- 個別addEventListenerは削除（partButtonDefs.forEachで一元管理） ---
@@ -298,18 +299,6 @@ class App {
             routeManager.generateAutoRoute();
         });
         
-        // 選択対象ラジオボタンのイベント
-        const selectTrackRadio = document.getElementById('selectTrackRadio');
-        const selectElementRadio = document.getElementById('selectElementRadio');
-        if (selectTrackRadio && selectElementRadio) {
-            selectTrackRadio.addEventListener('change', () => {
-                if (selectTrackRadio.checked) this.selectionTarget = 'track';
-            });
-            selectElementRadio.addEventListener('change', () => {
-                if (selectElementRadio.checked) this.selectionTarget = 'element';
-            });
-        }
-
         // レイアウト保存ボタン
         document.getElementById('exportLayoutBtn').addEventListener('click', () => {
             this.exportLayoutAsJson();
@@ -3578,6 +3567,16 @@ class App {
             reader.readAsText(file);
         });
         input.click();
+    }
+
+    // 回転ボタンの共通ハンドラ生成関数
+    createRotateButtonHandler(angle) {
+        return () => {
+            if (this.canvas.selectedTrack) {
+                this.canvas.selectedTrack.rotate(angle);
+                this.canvas.draw();
+            }
+        };
     }
 }
 
