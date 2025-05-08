@@ -199,17 +199,10 @@ class InterlockingManager {
         const element = this._findInterlockingElementAtPosition(x, y);
         
         if (element) {
-            this.editModeState.selectedElement = element.element;
-            this.editModeState.elementType = element.type;
-            this.editModeState.isDragging = true;
-            this.editModeState.lastMouseX = x;
-            this.editModeState.lastMouseY = y;
-            this.canvas.draw();
+            this.setSelection(element.element, element.type, x, y);
         } else {
             // 何も選択されなかった場合は選択解除
-            this.editModeState.selectedElement = null;
-            this.editModeState.elementType = null;
-            this.canvas.draw();
+            this.clearSelection();
         }
     }
     
@@ -281,11 +274,14 @@ class InterlockingManager {
      * 指定した位置にある連動要素を見つける
      * @param {number} x X座標
      * @param {number} y Y座標
-     * @returns {Object|null} 見つかった要素の情報
+     * @returns {Object|null} 見つかった要素の情報 { type, element, id } または null
+     * @throws {Error} 無効な座標が指定された場合
      * @private
      */
     _findInterlockingElementAtPosition(x, y) {
-        // 発点てこをチェック
+        if (typeof x !== 'number' || typeof y !== 'number' || isNaN(x) || isNaN(y)) {
+            throw new Error('有効な座標(x, y)を指定してください');
+        }
         for (const lever of this.collections.lever) {
             const dx = x - lever.x;
             const dy = y - lever.y;
@@ -293,7 +289,6 @@ class InterlockingManager {
                 return { type: 'lever', element: lever, id: lever.id };
             }
         }
-        // 着点ボタンをチェック
         for (const button of this.collections.button) {
             const dx = x - button.x;
             const dy = y - button.y;
@@ -301,7 +296,6 @@ class InterlockingManager {
                 return { type: 'button', element: button, id: button.id };
             }
         }
-        // 線路絶縁をチェック
         for (const insulation of this.collections.insulation) {
             const dx = x - insulation.x;
             const dy = y - insulation.y;
@@ -487,12 +481,16 @@ class InterlockingManager {
     }
     
     /**
-     * 要素の削除
+     * 要素の削除（共通化）
      * @param {string} id 削除する要素のID
      * @param {string} type 要素の種類 ('lever', 'button', 'insulation')
      * @returns {boolean} 削除が成功したかどうか
+     * @throws {Error} 無効なtypeが指定された場合
      */
     removeElement(id, type) {
+        if (!['lever', 'button', 'insulation'].includes(type)) {
+            throw new Error('removeElement: typeはlever/button/insulationのいずれかで指定してください');
+        }
         return this._removeElement(type, id);
     }
     
@@ -971,6 +969,78 @@ class InterlockingManager {
      */
     filter(type, predicate) {
         return this.collections[type]?.filter(predicate) || [];
+    }
+
+    /**
+     * UI上の選択状態をクリア
+     */
+    clearSelection() {
+        this.editModeState.selectedElement = null;
+        this.editModeState.elementType = null;
+        this.editModeState.isDragging = false;
+        this.canvas.draw();
+    }
+
+    /**
+     * 要素の選択状態をセット
+     * @param {object} element
+     * @param {string} type
+     * @param {number} x
+     * @param {number} y
+     */
+    setSelection(element, type, x, y) {
+        this.editModeState.selectedElement = element;
+        this.editModeState.elementType = type;
+        this.editModeState.isDragging = true;
+        this.editModeState.lastMouseX = x;
+        this.editModeState.lastMouseY = y;
+        this.canvas.draw();
+    }
+
+    /**
+     * 編集モード時の要素移動処理
+     * @param {number} x
+     * @param {number} y
+     */
+    moveSelectedElement(x, y) {
+        if (this.canvas.appMode === 'edit' && this.editModeState.isDragging && this.editModeState.selectedElement) {
+            const element = this.editModeState.selectedElement;
+            const dx = x - this.editModeState.lastMouseX;
+            const dy = y - this.editModeState.lastMouseY;
+            element.x += dx;
+            element.y += dy;
+            const snappedPos = this.canvas.snapToGrid({ x: element.x, y: element.y });
+            element.x = snappedPos.x;
+            element.y = snappedPos.y;
+            this.editModeState.lastMouseX = x;
+            this.editModeState.lastMouseY = y;
+            this.canvas.draw();
+        }
+    }
+
+    /**
+     * 編集モード時のドラッグ終了処理
+     */
+    endMoveSelectedElement() {
+        this.editModeState.isDragging = false;
+        this.editModeState.selectedElement = null;
+        this.editModeState.elementType = null;
+        this.canvas.draw();
+    }
+
+    /**
+     * 例外安全な要素追加
+     * @param {string} type
+     * @param {object} options
+     * @returns {object|null}
+     */
+    safeAddElement(type, options) {
+        try {
+            return this.addElement(type, options);
+        } catch (e) {
+            console.error(`要素追加失敗: ${e.message}`);
+            return null;
+        }
     }
 }
 
