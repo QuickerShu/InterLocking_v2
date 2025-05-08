@@ -468,6 +468,18 @@ class App {
         if (importLayoutBtn) {
             importLayoutBtn.addEventListener('click', this.handleImportLayout.bind(this));
         }
+
+        // サイドパネル開閉ボタンのセットアップ
+        this.setupPanelToggleButton();
+
+        // 進路候補モーダルの閉じるボタンのセットアップ
+        this.setupRouteModalCloseButton();
+
+        // デバッグ用データ保存ボタンの生成
+        this.createDebugButton();
+
+        // キャンバスサイズボタンの生成
+        this.createCanvasSizeButton();
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -3577,6 +3589,59 @@ class App {
                 this.canvas.draw();
             }
         };
+    }
+
+    // サイドパネル開閉ボタンのセットアップ
+    setupPanelToggleButton() {
+        const togglePanelBtn = document.getElementById('togglePanelBtn');
+        if (togglePanelBtn) {
+            togglePanelBtn.addEventListener('click', () => {
+                this.toggleSidePanel();
+            });
+        }
+    }
+
+    // 進路候補モーダルの閉じるボタンのセットアップ
+    setupRouteModalCloseButton() {
+        const closeRouteModalBtn = document.getElementById('closeRouteModalBtn');
+        if (closeRouteModalBtn) {
+            closeRouteModalBtn.addEventListener('click', () => {
+                document.getElementById('routeModal').classList.remove('show');
+            });
+        }
+    }
+
+    // デバッグ用データ保存ボタンの生成
+    createDebugButton() {
+        let debugBtn = document.getElementById('debugSaveBtn');
+        if (!debugBtn) {
+            debugBtn = document.createElement('button');
+            debugBtn.id = 'debugSaveBtn';
+            debugBtn.textContent = 'デバッグデータ保存';
+            debugBtn.title = '進路・候補・線路データをJSONで保存';
+            debugBtn.style.marginLeft = '10px';
+            if (this.toolbar) this.toolbar.appendChild(debugBtn);
+        }
+        debugBtn.addEventListener('click', () => {
+            this.saveDebugData();
+        });
+    }
+
+    // キャンバスサイズボタンの生成
+    createCanvasSizeButton() {
+        const visibilityBtn = document.getElementById('visibility');
+        if (visibilityBtn) {
+            let canvasSizeBtn = document.getElementById('canvasSizeBtn');
+            if (!canvasSizeBtn) {
+                canvasSizeBtn = document.createElement('button');
+                canvasSizeBtn.id = 'canvasSizeBtn';
+                canvasSizeBtn.textContent = 'キャンバスサイズ';
+                visibilityBtn.parentNode.insertBefore(canvasSizeBtn, visibilityBtn);
+            }
+            canvasSizeBtn.addEventListener('click', () => {
+                this.showCanvasSizeDialog();
+            });
+        }
     }
 }
 
