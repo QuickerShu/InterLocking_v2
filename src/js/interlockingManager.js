@@ -897,6 +897,81 @@ class InterlockingManager {
     addTrackInsulation(options) {
         return this.addElement('insulation', options);
     }
+
+    /**
+     * 状態管理の初期化
+     */
+    _initStates() {
+        this.routeSelectionState = {
+            isSelectingRoute: false,
+            selectedLever: null,
+            selectableButtons: []
+        };
+        this.editModeState = {
+            selectedElement: null,
+            isDragging: false,
+            lastMouseX: 0,
+            lastMouseY: 0,
+            elementType: null
+        };
+    }
+
+    /**
+     * 状態リセット
+     */
+    resetStates() {
+        this._initStates();
+        this.resetCounters();
+    }
+
+    /**
+     * コレクションからIDで要素を検索
+     * @param {string} type
+     * @param {string} id
+     * @returns {object|null}
+     */
+    findById(type, id) {
+        return this.collections[type]?.find(e => e.id === id) || null;
+    }
+
+    /**
+     * コレクションからIDで要素を削除
+     * @param {string} type
+     * @param {string} id
+     * @returns {boolean}
+     */
+    removeById(type, id) {
+        const col = this.collections[type];
+        if (!col) return false;
+        const idx = col.findIndex(e => e.id === id);
+        if (idx !== -1) {
+            col.splice(idx, 1);
+            this.canvas.draw();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * コレクションの全要素に対して処理を実行
+     * @param {string} type
+     * @param {function} callback
+     */
+    forEach(type, callback) {
+        if (this.collections[type]) {
+            this.collections[type].forEach(callback);
+        }
+    }
+
+    /**
+     * コレクションの要素を条件で抽出
+     * @param {string} type
+     * @param {function} predicate
+     * @returns {Array}
+     */
+    filter(type, predicate) {
+        return this.collections[type]?.filter(predicate) || [];
+    }
 }
 
 // グローバル変数として公開
