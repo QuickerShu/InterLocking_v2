@@ -5,6 +5,10 @@
 
 // 必要なクラスはグローバル変数から参照
 
+// 定数定義
+const HIT_RADIUS = 20; // クリック判定半径
+const HIGHLIGHT_RADIUS = 15; // ハイライト円半径
+
 class InterlockingManager {
     constructor(canvas, interlockingSystem, trackManager) {
         this.canvas = canvas;
@@ -12,9 +16,24 @@ class InterlockingManager {
         this.trackManager = trackManager;
         
         // 各要素のコレクション
-        this.startLevers = [];
-        this.destinationButtons = [];
-        this.trackInsulations = [];
+        this.collections = {
+            lever: [],
+            button: [],
+            insulation: []
+        };
+        // 旧名互換
+        Object.defineProperty(this, 'startLevers', {
+            get: () => this.collections.lever,
+            set: v => { this.collections.lever = v; }
+        });
+        Object.defineProperty(this, 'destinationButtons', {
+            get: () => this.collections.button,
+            set: v => { this.collections.button = v; }
+        });
+        Object.defineProperty(this, 'trackInsulations', {
+            get: () => this.collections.insulation,
+            set: v => { this.collections.insulation = v; }
+        });
         
         // 要素の連番カウンター
         this.counters = {
@@ -288,42 +307,30 @@ class InterlockingManager {
      * @private
      */
     _findInterlockingElementAtPosition(x, y) {
-        // 判定半径
-        const hitRadius = 20;
-        
         // 発点てこをチェック
-        for (const lever of this.startLevers) {
+        for (const lever of this.collections.lever) {
             const dx = x - lever.x;
             const dy = y - lever.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= hitRadius) {
+            if (Math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS) {
                 return { type: 'lever', element: lever, id: lever.id };
             }
         }
-        
         // 着点ボタンをチェック
-        for (const button of this.destinationButtons) {
+        for (const button of this.collections.button) {
             const dx = x - button.x;
             const dy = y - button.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= hitRadius) {
+            if (Math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS) {
                 return { type: 'button', element: button, id: button.id };
             }
         }
-        
         // 線路絶縁をチェック
-        for (const insulation of this.trackInsulations) {
+        for (const insulation of this.collections.insulation) {
             const dx = x - insulation.x;
             const dy = y - insulation.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance <= hitRadius) {
+            if (Math.sqrt(dx * dx + dy * dy) <= HIT_RADIUS) {
                 return { type: 'insulation', element: insulation, id: insulation.id };
             }
         }
-        
         return null;
     }
     
@@ -508,40 +515,7 @@ class InterlockingManager {
      * @returns {boolean} 削除が成功したかどうか
      */
     removeElement(id, type) {
-        let index = -1;
-        let collection = null;
-        
-        switch (type) {
-            case 'lever':
-                collection = this.startLevers;
-                index = collection.findIndex(item => item.id === id);
-                break;
-                
-            case 'button':
-                collection = this.destinationButtons;
-                index = collection.findIndex(item => item.id === id);
-                break;
-                
-            case 'insulation':
-                collection = this.trackInsulations;
-                index = collection.findIndex(item => item.id === id);
-                break;
-                
-            default:
-                return false;
-        }
-        
-        if (index === -1) {
-            return false;
-        }
-        
-        // 要素の削除
-        collection.splice(index, 1);
-        
-        // 画面の再描画をリクエスト
-        this.canvas.draw();
-        
-        return true;
+        return this._removeElement(type, id);
     }
     
     /**
@@ -578,12 +552,11 @@ class InterlockingManager {
     _drawSelectedElementHighlight(ctx) {
         const element = this.editModeState.selectedElement;
         if (!element) return;
-        
         ctx.save();
         ctx.strokeStyle = '#00FFFF';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(element.x, element.y, 15, 0, Math.PI * 2);
+        ctx.arc(element.x, element.y, HIGHLIGHT_RADIUS, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
     }
@@ -715,17 +688,11 @@ class InterlockingManager {
      * @param {string} id 削除する発点てこのID
      */
     removeStartLever(id) {
-        const index = this.startLevers.findIndex(lever => lever.id === id);
-        if (index !== -1) {
-            this.startLevers.splice(index, 1);
-            
-            // 選択状態も更新
+        if (this._removeElement('lever', id)) {
             if (this.editModeState.selectedElement && this.editModeState.selectedElement.id === id) {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            
-            // ステータス表示を更新
             this.canvas.setStatusInfo(`発点てこ ${id} を削除しました`);
         }
     }
@@ -735,17 +702,11 @@ class InterlockingManager {
      * @param {string} id 削除する着点ボタンのID
      */
     removeDestinationButton(id) {
-        const index = this.destinationButtons.findIndex(button => button.id === id);
-        if (index !== -1) {
-            this.destinationButtons.splice(index, 1);
-            
-            // 選択状態も更新
+        if (this._removeElement('button', id)) {
             if (this.editModeState.selectedElement && this.editModeState.selectedElement.id === id) {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            
-            // ステータス表示を更新
             this.canvas.setStatusInfo(`着点ボタン ${id} を削除しました`);
         }
     }
@@ -755,17 +716,11 @@ class InterlockingManager {
      * @param {string} id 削除する線路絶縁のID
      */
     removeTrackInsulation(id) {
-        const index = this.trackInsulations.findIndex(insulation => insulation.id === id);
-        if (index !== -1) {
-            this.trackInsulations.splice(index, 1);
-            
-            // 選択状態も更新
+        if (this._removeElement('insulation', id)) {
             if (this.editModeState.selectedElement && this.editModeState.selectedElement.id === id) {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            
-            // ステータス表示を更新
             this.canvas.setStatusInfo(`線路絶縁 ${id} を削除しました`);
         }
     }
@@ -897,6 +852,26 @@ class InterlockingManager {
         this.destinationButtons.push(button);
         this.counters.destButton++;
         return button;
+    }
+
+    // 共通コレクション操作
+    _findElement(type, id) {
+        return this.collections[type]?.find(e => e.id === id) || null;
+    }
+    _addElement(type, element) {
+        if (!this.collections[type]) this.collections[type] = [];
+        this.collections[type].push(element);
+    }
+    _removeElement(type, id) {
+        const col = this.collections[type];
+        if (!col) return false;
+        const idx = col.findIndex(e => e.id === id);
+        if (idx !== -1) {
+            col.splice(idx, 1);
+            this.canvas.draw();
+            return true;
+        }
+        return false;
     }
 }
 
