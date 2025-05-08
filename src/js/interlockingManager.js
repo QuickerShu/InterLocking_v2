@@ -757,10 +757,11 @@ class InterlockingManager {
     }
 
     /**
-     * 要素追加の共通化
-     * @param {string} type
-     * @param {object} options
+     * 要素を追加（共通化）
+     * @param {string} type 要素の種類 ('lever', 'button', 'insulation')
+     * @param {object} options 追加する要素のオプション
      * @returns {object} 追加された要素
+     * @throws {Error} 無効なtypeが指定された場合
      */
     addElement(type, options) {
         let element;
@@ -775,7 +776,7 @@ class InterlockingManager {
                 element = this._createTrackInsulation(options);
                 break;
             default:
-                throw new Error('Unknown element type');
+                throw new Error('addElement: typeはlever/button/insulationのいずれかで指定してください');
         }
         this._addElement(type, element);
         return element;
