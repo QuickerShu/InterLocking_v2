@@ -335,78 +335,6 @@ class App {
         const toolbar = document.getElementById('toolbar');
         if (toolbar) toolbar.appendChild(debugBtn);
 
-        // 進路全消去ボタンを追加
-        let clearRoutesBtn = document.getElementById('clearRoutesBtn');
-        if (!clearRoutesBtn) {
-            clearRoutesBtn = document.createElement('button');
-            clearRoutesBtn.id = 'clearRoutesBtn';
-            clearRoutesBtn.textContent = '進路全消去';
-            clearRoutesBtn.title = '登録された進路（routes）を全て削除';
-            this.toolbar.appendChild(clearRoutesBtn);
-        }
-        clearRoutesBtn.addEventListener('click', () => {
-            if (window.routeManager) {
-                if (confirm('本当に全ての進路を削除しますか？')) {
-                    window.routeManager.clearRoutes();
-                    window.routeManager.updateRouteList && window.routeManager.updateRouteList();
-                    this.setStatusInfo('全ての進路を削除しました');
-                }
-            }
-        });
-
-        // レイアウト読込ボタンを追加
-        let importLayoutBtn = document.getElementById('importLayoutBtn');
-        if (!importLayoutBtn) {
-            importLayoutBtn = document.createElement('button');
-            importLayoutBtn.id = 'importLayoutBtn';
-            importLayoutBtn.textContent = 'レイアウト読込';
-            importLayoutBtn.title = 'レイアウトデータ(JSON)を読み込む';
-            this.toolbar.appendChild(importLayoutBtn);
-        }
-        importLayoutBtn.addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json,application/json';
-            input.addEventListener('change', async (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (ev) => {
-                    try {
-                        const json = ev.target.result;
-                        const data = JSON.parse(json);
-                        // トラック
-                        if (data.tracks && window.app.trackManager) {
-                            window.app.trackManager.tracks.clear && window.app.trackManager.tracks.clear();
-                            data.tracks.forEach(trackData => {
-                                const track = window.app.trackManager.constructor.Track ? window.app.trackManager.constructor.Track.fromJSON(trackData) : null;
-                                if (track) window.app.trackManager.tracks.set(track.id, track);
-                            });
-                        }
-                        // 連動要素
-                        if (window.app.interlockingManager && typeof window.app.interlockingManager.importData === 'function') {
-                            window.app.interlockingManager.importData(data);
-                        }
-                        // 進路(routes)
-                        if (data.routes && window.routeManager) {
-                            window.routeManager.clearRoutes && window.routeManager.clearRoutes();
-                            data.routes.forEach(routeData => {
-                                const route = window.routeManager.constructor.Route ? window.routeManager.constructor.Route.fromJSON(routeData) : null;
-                                if (route) window.routeManager.addRoute(route);
-                            });
-                            window.routeManager.updateRouteList && window.routeManager.updateRouteList();
-                        }
-                        window.app.canvas.draw && window.app.canvas.draw();
-                        window.app.setStatusInfo('レイアウトデータを読み込みました');
-                    } catch (err) {
-                        alert('レイアウトデータの読み込みに失敗しました: ' + err.message);
-                    }
-                };
-                reader.readAsText(file);
-            });
-            input.click();
-        });
-
         // 線路パーツ・連動要素ボタンのトグル機能付きイベントリスナー
         const partButtonDefs = [
             { id: 'straight', type: 'straight', label: '直線', status: '直線を描画します。最初の点をクリックしてください。' },
@@ -527,6 +455,30 @@ class App {
                 el.addEventListener('click', this.createToggleButtonHandler(btn.method, btn.id));
             }
         });
+
+        // 進路関連・ファイル操作系ボタンの定義
+        const simpleButtons = [
+            { id: 'autoRouteBtn', method: () => { if (this.appMode !== 'edit') { this.setStatusInfo('編集モードに切り替えてください。'); return; } routeManager.generateAutoRoute(); } },
+            { id: 'exportLayoutBtn', method: this.exportLayoutAsJson.bind(this) },
+            { id: 'debugSaveBtn', method: this.saveDebugData.bind(this) },
+            { id: 'canvasSizeBtn', method: this.showCanvasSizeDialog.bind(this) }
+        ];
+        simpleButtons.forEach(btn => {
+            const el = document.getElementById(btn.id);
+            if (el) {
+                el.addEventListener('click', btn.method);
+            }
+        });
+        // 進路全消去ボタン
+        const clearRoutesBtn = document.getElementById('clearRoutesBtn');
+        if (clearRoutesBtn) {
+            clearRoutesBtn.addEventListener('click', this.handleClearRoutes.bind(this));
+        }
+        // レイアウト読込ボタン
+        const importLayoutBtn = document.getElementById('importLayoutBtn');
+        if (importLayoutBtn) {
+            importLayoutBtn.addEventListener('click', this.handleImportLayout.bind(this));
+        }
     }
 
     // レイアウトデータをJSONでエクスポート
@@ -3563,6 +3515,69 @@ class App {
             this.canvas[canvasMethod]();
             document.getElementById(btnId).classList.toggle('active');
         };
+    }
+
+    // 単純なメソッド呼び出し用の共通ハンドラ生成関数
+    createSimpleButtonHandler(methodName) {
+        return () => {
+            this[methodName]();
+        };
+    }
+
+    // 進路全消去ボタンのハンドラ
+    handleClearRoutes() {
+        if (window.routeManager) {
+            if (confirm('本当に全ての進路を削除しますか？')) {
+                window.routeManager.clearRoutes();
+                window.routeManager.updateRouteList && window.routeManager.updateRouteList();
+                this.setStatusInfo('全ての進路を削除しました');
+            }
+        }
+    }
+
+    // レイアウト読込ボタンのハンドラ
+    handleImportLayout() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    const json = ev.target.result;
+                    const data = JSON.parse(json);
+                    // トラック
+                    if (data.tracks && window.app.trackManager) {
+                        window.app.trackManager.tracks.clear && window.app.trackManager.tracks.clear();
+                        data.tracks.forEach(trackData => {
+                            const track = window.app.trackManager.constructor.Track ? window.app.trackManager.constructor.Track.fromJSON(trackData) : null;
+                            if (track) window.app.trackManager.tracks.set(track.id, track);
+                        });
+                    }
+                    // 連動要素
+                    if (window.app.interlockingManager && typeof window.app.interlockingManager.importData === 'function') {
+                        window.app.interlockingManager.importData(data);
+                    }
+                    // 進路(routes)
+                    if (data.routes && window.routeManager) {
+                        window.routeManager.clearRoutes && window.routeManager.clearRoutes();
+                        data.routes.forEach(routeData => {
+                            const route = window.routeManager.constructor.Route ? window.routeManager.constructor.Route.fromJSON(routeData) : null;
+                            if (route) window.routeManager.addRoute(route);
+                        });
+                        window.routeManager.updateRouteList && window.routeManager.updateRouteList();
+                    }
+                    window.app.canvas.draw && window.app.canvas.draw();
+                    window.app.setStatusInfo('レイアウトデータを読み込みました');
+                } catch (err) {
+                    alert('レイアウトデータの読み込みに失敗しました: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+        input.click();
     }
 }
 
