@@ -502,17 +502,17 @@ class InterlockingManager {
      */
     draw(ctx) {
         // 線路絶縁の描画
-        this.trackInsulations.forEach(insulation => {
+        this.collections.insulation.forEach(insulation => {
             insulation.draw(ctx);
         });
         
         // 着点ボタンの描画
-        this.destinationButtons.forEach(button => {
+        this.collections.button.forEach(button => {
             button.draw(ctx);
         });
         
         // 発点てこの描画
-        this.startLevers.forEach(lever => {
+        this.collections.lever.forEach(lever => {
             lever.draw(ctx);
         });
         
@@ -545,27 +545,25 @@ class InterlockingManager {
      */
     exportData() {
         return {
-            startLevers: this.startLevers.map(lever => ({
+            startLevers: this.collections.lever.map(lever => ({
                 id: lever.id,
                 type: lever.type,
-                position: { ...lever.position },
+                position: { x: lever.x, y: lever.y },
                 trackId: lever.trackId,
-                routes: lever.routes.map(route => route.id)
+                routes: lever.routes?.map(route => route.id) || []
             })),
-            
-            destinationButtons: this.destinationButtons.map(button => ({
+            destinationButtons: this.collections.button.map(button => ({
                 id: button.id,
-                position: { ...button.position },
+                position: { x: button.x, y: button.y },
                 trackId: button.trackId,
-                routes: button.routes.map(route => route.id)
+                routes: button.routes?.map(route => route.id) || []
             })),
-            
-            trackInsulations: this.trackInsulations.map(insulation => ({
+            trackInsulations: this.collections.insulation.map(insulation => ({
                 id: insulation.id,
                 position: { ...insulation.position },
                 type: insulation.type,
                 direction: insulation.direction,
-                trackSegments: [...insulation.trackSegments]
+                trackSegments: [...(insulation.trackSegments || [])]
             }))
         };
     }
@@ -576,11 +574,10 @@ class InterlockingManager {
      */
     importData(data) {
         // 既存の要素をクリア
-        this.startLevers = [];
-        this.destinationButtons = [];
-        this.trackInsulations = [];
-        
-        // 要素のインポート
+        this.collections.lever = [];
+        this.collections.button = [];
+        this.collections.insulation = [];
+        // インポート
         if (data.trackInsulations && Array.isArray(data.trackInsulations)) {
             data.trackInsulations.forEach(item => {
                 const insulation = new TrackInsulation(
@@ -589,17 +586,12 @@ class InterlockingManager {
                     item.type,
                     item.direction
                 );
-                
-                // トラックセグメントの設定
                 if (item.trackSegments && Array.isArray(item.trackSegments)) {
                     insulation.trackSegments = [...item.trackSegments];
                 }
-                
-                this.trackInsulations.push(insulation);
+                this.collections.insulation.push(insulation);
             });
         }
-        
-        // ボタンのインポート
         if (data.destinationButtons && Array.isArray(data.destinationButtons)) {
             data.destinationButtons.forEach(item => {
                 const button = new DestinationButton(
@@ -607,57 +599,48 @@ class InterlockingManager {
                     item.position,
                     item.trackId
                 );
-                
-                this.destinationButtons.push(button);
+                this.collections.button.push(button);
             });
         }
-        
-        // レバーのインポート
         if (data.startLevers && Array.isArray(data.startLevers)) {
             data.startLevers.forEach(item => {
                 const lever = new StartLever(
                     item.id,
                     item.type,
-                    item.position,
+                    item.position.x,
+                    item.position.y,
                     item.trackId
                 );
-                
-                this.startLevers.push(lever);
+                this.collections.lever.push(lever);
             });
         }
-        
         // 進路参照の設定
         if (this.interlockingSystem) {
-            // レバーの進路設定
             if (data.startLevers) {
                 data.startLevers.forEach((item, index) => {
                     if (item.routes && Array.isArray(item.routes)) {
                         item.routes.forEach(routeId => {
                             const route = this.interlockingSystem.getRoute(routeId);
-                            if (route && this.startLevers[index]) {
-                                this.startLevers[index].addRoute(route);
+                            if (route && this.collections.lever[index]) {
+                                this.collections.lever[index].addRoute(route);
                             }
                         });
                     }
                 });
             }
-            
-            // ボタンの進路設定
             if (data.destinationButtons) {
                 data.destinationButtons.forEach((item, index) => {
                     if (item.routes && Array.isArray(item.routes)) {
                         item.routes.forEach(routeId => {
                             const route = this.interlockingSystem.getRoute(routeId);
-                            if (route && this.destinationButtons[index]) {
-                                this.destinationButtons[index].addRoute(route);
+                            if (route && this.collections.button[index]) {
+                                this.collections.button[index].addRoute(route);
                             }
                         });
                     }
                 });
             }
         }
-        
-        // 画面の再描画をリクエスト
         this.canvas.draw();
     }
     
@@ -751,7 +734,7 @@ class InterlockingManager {
         this.resetCounters();
         
         // 発点てこの連番を更新
-        this.startLevers.forEach(lever => {
+        this.collections.lever.forEach(lever => {
             const num = parseInt(lever.name.match(/\d+$/)?.[0] || '0');
             if (num >= this.counters[lever.type]) {
                 this.counters[lever.type] = num + 1;
@@ -759,7 +742,7 @@ class InterlockingManager {
         });
 
         // 着点ボタンの連番を更新
-        this.destinationButtons.forEach(button => {
+        this.collections.button.forEach(button => {
             const num = parseInt(button.name.match(/\d+$/)?.[0] || '0');
             if (num >= this.counters.destButton) {
                 this.counters.destButton = num + 1;
@@ -767,7 +750,7 @@ class InterlockingManager {
         });
 
         // 線路絶縁の連番を更新
-        this.trackInsulations.forEach(insulation => {
+        this.collections.insulation.forEach(insulation => {
             const num = parseInt(insulation.name.match(/\d+$/)?.[0] || '0');
             if (num >= this.counters.insulation) {
                 this.counters.insulation = num + 1;
@@ -888,6 +871,31 @@ class InterlockingManager {
             return true;
         }
         return false;
+    }
+
+    /**
+     * 既存API互換ラッパー: 発点てこ追加
+     * @param {object} options
+     * @returns {object}
+     */
+    addStartLever(options) {
+        return this.addElement('lever', options);
+    }
+    /**
+     * 既存API互換ラッパー: 着点ボタン追加
+     * @param {object} options
+     * @returns {object}
+     */
+    addDestinationButton(options) {
+        return this.addElement('button', options);
+    }
+    /**
+     * 既存API互換ラッパー: 線路絶縁追加
+     * @param {object} options
+     * @returns {object}
+     */
+    addTrackInsulation(options) {
+        return this.addElement('insulation', options);
     }
 }
 
