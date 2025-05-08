@@ -74,18 +74,13 @@ class InterlockingManager {
      * @private
      */
     _setupEventListeners() {
-        // キャンバスクリックイベント
-        // trackCanvasに対してイベントリスナーを追加
         if (this.canvas && this.canvas.trackCanvas) {
-            this.canvas.trackCanvas.addEventListener('click', this._handleCanvasClick.bind(this));
-            // 右クリックイベントハンドラを追加
-            this.canvas.trackCanvas.addEventListener('contextmenu', this._handleContextMenu.bind(this));
+            this.canvas.trackCanvas.addEventListener('click', this._onCanvasClick.bind(this));
+            this.canvas.trackCanvas.addEventListener('contextmenu', this._onContextMenu.bind(this));
         }
-        
-        // 進路状態変更時のリスナー
         if (this.interlockingSystem && this.interlockingSystem.onChange) {
             this.interlockingSystem.onChange((event, data) => {
-                this._handleInterlockingChange(event, data);
+                this._onInterlockingChange(event, data);
             });
         }
     }
@@ -95,26 +90,17 @@ class InterlockingManager {
      * @param {MouseEvent} event 
      * @private
      */
-    _handleContextMenu(event) {
-        // コンテキストメニューを表示しないよう防止
+    _onContextMenu(event) {
         event.preventDefault();
-        
-        // 操作モードの場合のみ処理
         if (this.canvas.appMode === 'operation') {
-            const rect = this.canvas.trackCanvas.getBoundingClientRect();
-            const x = (event.clientX - rect.left) / this.canvas.scale + this.canvas.offsetX;
-            const y = (event.clientY - rect.top) / this.canvas.scale + this.canvas.offsetY;
-            
-            // てこのクリック判定
-            for (const lever of this.startLevers) {
+            const { x, y } = this._getCanvasCoords(event);
+            for (const lever of this.collections.lever) {
                 if (lever.isClicked(x, y)) {
                     lever.onClick(this.interlockingSystem, event);
                     this.canvas.draw();
                     return;
                 }
             }
-            
-            // ポイントをクリックした場合も追加できますが、この実装は保留します
         }
     }
     
@@ -123,40 +109,24 @@ class InterlockingManager {
      * @param {MouseEvent} event 
      * @private
      */
-    _handleCanvasClick(event) {
-        // Canvas側でクリックイベント防止フラグがセットされている場合は何もしない
-        if (this.canvas.preventNextClickEvent) {
-            return;
-        }
-
-        const rect = this.canvas.trackCanvas.getBoundingClientRect();
-        const x = (event.clientX - rect.left) / this.canvas.scale + this.canvas.offsetX;
-        const y = (event.clientY - rect.top) / this.canvas.scale + this.canvas.offsetY;
-        
-        // アプリケーションモードによって処理を分岐
+    _onCanvasClick(event) {
+        if (this.canvas.preventNextClickEvent) return;
+        const { x, y } = this._getCanvasCoords(event);
         if (this.canvas.appMode === 'edit') {
-            // 編集モードの場合
-            
             if (this.canvas.drawMode === 'delete') {
-                // 削除モードの場合
                 this._handleDeleteModeClick(x, y);
                 return;
             }
-            
             if (this.canvas.drawMode === 'cursor') {
-                // 選択モードの場合
                 this._handleSelectModeClick(x, y);
                 return;
             }
         } else {
-            // 操作モードの場合（既存の処理）
-            // 着点ボタンのクリック判定
             if (this.routeSelectionState.isSelectingRoute) {
-                for (const button of this.destinationButtons) {
+                for (const button of this.collections.button) {
                     if (button.isClicked(x, y)) {
                         const result = button.onClick(this.interlockingSystem);
                         if (result) {
-                            // 進路が選択された場合は選択状態をリセット
                             this._resetRouteSelection();
                             this.canvas.draw();
                         }
@@ -164,29 +134,37 @@ class InterlockingManager {
                     }
                 }
             }
-            
-            // 発点てこのクリック判定
-            for (const lever of this.startLevers) {
+            for (const lever of this.collections.lever) {
                 if (lever.isClicked(x, y)) {
                     const result = lever.onClick(this.interlockingSystem, event);
                     if (result === 'route-selection-started') {
-                        // 進路選択開始
                         this._startRouteSelection(lever);
                     } else if (result === 'route-release-requested') {
-                        // 進路解除リクエスト
                         this._resetRouteSelection();
                     }
                     this.canvas.draw();
                     return;
                 }
             }
-            
-            // 何もクリックされなかった場合は選択をリセット
             if (this.routeSelectionState.isSelectingRoute) {
                 this._resetRouteSelection();
                 this.canvas.draw();
             }
         }
+    }
+    
+    /**
+     * マウスイベントからキャンバス座標を取得
+     * @param {MouseEvent} event
+     * @returns {{x: number, y: number}}
+     * @private
+     */
+    _getCanvasCoords(event) {
+        const rect = this.canvas.trackCanvas.getBoundingClientRect();
+        return {
+            x: (event.clientX - rect.left) / this.canvas.scale + this.canvas.offsetX,
+            y: (event.clientY - rect.top) / this.canvas.scale + this.canvas.offsetY
+        };
     }
     
     /**
@@ -340,7 +318,7 @@ class InterlockingManager {
      * @param {Object} data イベントデータ
      * @private
      */
-    _handleInterlockingChange(event, data) {
+    _onInterlockingChange(event, data) {
         switch (event) {
             case 'route-locked':
                 // 進路開通時の処理
@@ -798,60 +776,98 @@ class InterlockingManager {
     }
 
     /**
-     * 発点てこを追加
+     * 要素追加の共通化
+     * @param {string} type
+     * @param {object} options
+     * @returns {object} 追加された要素
      */
-    addStartLever(options) {
+    addElement(type, options) {
+        let element;
+        switch (type) {
+            case 'lever':
+                element = this._createStartLever(options);
+                break;
+            case 'button':
+                element = this._createDestinationButton(options);
+                break;
+            case 'insulation':
+                element = this._createTrackInsulation(options);
+                break;
+            default:
+                throw new Error('Unknown element type');
+        }
+        this._addElement(type, element);
+        return element;
+    }
+
+    /**
+     * 発点てこ生成
+     * @private
+     */
+    _createStartLever(options) {
         const type = options.type;
         if (!this.counters[type]) this.counters[type] = 1;
-        // 仮IDの場合は本設IDを発行
         let id = options.id;
         if (typeof id === 'string' && id.startsWith('temp_')) {
             id = `${type}Lever_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         }
-        // 既存IDがあればカウンターや名称を進めず、trackId/endpointIndexだけ更新してreturn
-        const existing = this.startLevers.find(l => l.id === id);
+        const existing = this.collections.lever.find(l => l.id === id);
         if (existing) {
             if (options.trackId !== undefined) existing.trackId = options.trackId;
             if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
-            // nameは絶対に上書きしない
             return existing;
         }
-        // 新規の場合のみカウンター進めて名称付与
         const name = `${window.app.getLeverTypeName(type)}${this.counters[type]}`;
         const lever = new StartLever(id, type, options.x, options.y, options.trackId, this.counters[type]);
         lever.name = name;
         lever.endpointIndex = options.endpointIndex;
-        this.startLevers.push(lever);
         this.counters[type]++;
         return lever;
     }
 
     /**
-     * 着点ボタンを追加
+     * 着点ボタン生成
+     * @private
      */
-    addDestinationButton(options) {
+    _createDestinationButton(options) {
         if (!this.counters.destButton) this.counters.destButton = 1;
-        // 仮IDの場合は本設IDを発行
         let id = options.id;
         if (typeof id === 'string' && id.startsWith('temp_')) {
             id = `destButton_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         }
-        // 既存IDがあればカウンターや名称を進めず、trackId/endpointIndexだけ更新してreturn
-        const existing = this.destinationButtons.find(b => b.id === id);
+        const existing = this.collections.button.find(b => b.id === id);
         if (existing) {
             if (options.trackId !== undefined) existing.trackId = options.trackId;
             if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
-            // nameは絶対に上書きしない
             return existing;
         }
-        // 新規の場合のみカウンター進めて名称付与
         const name = `着点ボタン${this.counters.destButton}`;
         const button = new DestinationButton(id, {x: options.x, y: options.y}, options.trackId, this.counters.destButton);
         button.name = name;
         button.endpointIndex = options.endpointIndex;
-        this.destinationButtons.push(button);
         this.counters.destButton++;
         return button;
+    }
+
+    /**
+     * 線路絶縁生成
+     * @private
+     */
+    _createTrackInsulation(options) {
+        if (!this.counters.insulation) this.counters.insulation = 1;
+        let id = options.id;
+        if (typeof id === 'string' && id.startsWith('temp_')) {
+            id = `insulation_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        }
+        const existing = this.collections.insulation.find(i => i.id === id);
+        if (existing) {
+            return existing;
+        }
+        const name = `線路絶縁${this.counters.insulation}`;
+        const insulation = new TrackInsulation(id, options.position, options.type, options.direction);
+        insulation.name = name;
+        this.counters.insulation++;
+        return insulation;
     }
 
     // 共通コレクション操作
