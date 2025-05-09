@@ -704,16 +704,27 @@ class RouteManager {
             detailsDiv.className = 'route-details';
             detailsDiv.textContent = `てこ: ${leverName} → 着点: ${destName}`;
             div.appendChild(detailsDiv);
-            // 開通ボタン
-            const openBtn = document.createElement('button');
-            openBtn.textContent = '開通';
-            openBtn.className = 'route-action-btn';
-            openBtn.onclick = () => {
-                if (typeof this.activateRoute === 'function') {
-                    this.activateRoute(route.id);
-                }
-            };
-            div.appendChild(openBtn);
+            // 開通/解除ボタン
+            const actionBtn = document.createElement('button');
+            actionBtn.className = 'route-action-btn';
+            if (route.isActive) {
+                actionBtn.textContent = '解除';
+                actionBtn.onclick = () => {
+                    if (typeof this.deactivateRoute === 'function') {
+                        this.deactivateRoute(route.id);
+                        this.updateRouteList();
+                    }
+                };
+            } else {
+                actionBtn.textContent = '開通';
+                actionBtn.onclick = () => {
+                    if (typeof this.activateRoute === 'function') {
+                        this.activateRoute(route.id);
+                        this.updateRouteList();
+                    }
+                };
+            }
+            div.appendChild(actionBtn);
             // 削除ボタン
             const delBtn = document.createElement('button');
             delBtn.textContent = '削除';
