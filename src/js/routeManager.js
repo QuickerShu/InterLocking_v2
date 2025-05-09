@@ -953,6 +953,67 @@ class RouteManager {
             // --- ここで必ずstatusをnormalに ---
             track.status = 'normal';
             deactivatedTrackIds.add(track.id);
+            // --- 追加: ダブルクロス/ダブルスリップの端点ペアstatusもリセット・再集計 ---
+            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                // 全ペアをnormalに
+                const validPairs = [
+                    [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+                ];
+                validPairs.forEach(([a,b]) => track.setPairStatus && track.setPairStatus(a, b, 'normal'));
+                // 他のアクティブ進路のstepを再集計
+                for (const r of this.routes.values()) {
+                    if (!r.isActive || r.id === routeId) continue;
+                    const arr = r.points || [];
+                    // 直進2本（0-1, 2-3）
+                    let has01 = false, has23 = false;
+                    for (let i = 0; i < arr.length - 1; i++) {
+                        const curr = arr[i];
+                        const next = arr[i + 1];
+                        if (curr.trackId == track.id && next.trackId == track.id) {
+                            if ((curr.toEpIdx === 0 && next.toEpIdx === 1) || (curr.toEpIdx === 1 && next.toEpIdx === 0)) has01 = true;
+                            if ((curr.toEpIdx === 2 && next.toEpIdx === 3) || (curr.toEpIdx === 3 && next.toEpIdx === 2)) has23 = true;
+                        }
+                    }
+                    if (has01) {
+                        track.setPairStatus(0, 1, 'ROUTE');
+                        track.setPairStatus(1, 0, 'ROUTE');
+                    }
+                    if (has23) {
+                        track.setPairStatus(2, 3, 'ROUTE');
+                        track.setPairStatus(3, 2, 'ROUTE');
+                    }
+                    // cross方向
+                    for (let i = 0; i < arr.length - 1; i++) {
+                        const curr = arr[i];
+                        const next = arr[i + 1];
+                        if (curr.trackId == track.id && next.trackId == track.id) {
+                            if (
+                                (curr.toEpIdx === 0 && next.toEpIdx === 3) || (curr.toEpIdx === 3 && next.toEpIdx === 0) ||
+                                (curr.toEpIdx === 1 && next.toEpIdx === 2) || (curr.toEpIdx === 2 && next.toEpIdx === 1)
+                            ) {
+                                track.setPairStatus(curr.toEpIdx, next.toEpIdx, 'ROUTE');
+                                track.setPairStatus(next.toEpIdx, curr.toEpIdx, 'ROUTE');
+                            }
+                        }
+                    }
+                }
+                // デバッグ: 全ペアstatus出力
+                if (track.getPairStatus) {
+                    console.log('[DEBUG][deactivateRoute][setPairStatus][allPairs]', {
+                        '0-1': track.getPairStatus(0,1),
+                        '1-0': track.getPairStatus(1,0),
+                        '2-3': track.getPairStatus(2,3),
+                        '3-2': track.getPairStatus(3,2),
+                        '0-3': track.getPairStatus(0,3),
+                        '3-0': track.getPairStatus(3,0),
+                        '2-1': track.getPairStatus(2,1),
+                        '0-2': track.getPairStatus(0,2),
+                        '2-0': track.getPairStatus(2,0),
+                        '1-3': track.getPairStatus(1,3),
+                        '3-1': track.getPairStatus(3,1)
+                    });
+                }
+            }
             // 分岐器の場合、他のアクティブ進路のstepを再集計
             if (track.isPoint && (track.type === 'point_left' || track.type === 'point_right')) {
                 // 他のアクティブ進路のstepを集計
