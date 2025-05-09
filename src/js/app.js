@@ -1332,10 +1332,19 @@ class App {
             if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType && this.placingPartType !== 'straight') {
                 // 仮パーツがなければ生成
                 if (!this._previewPlacingTrack) {
+                    if (this.canvas.scale !== 1) {
+                        console.warn('[PREVIEW-INIT] scale!=1:', this.canvas.scale);
+                    } else {
+                        console.log('[PREVIEW-INIT] scale:', this.canvas.scale);
+                    }
                     const mousePos = this.canvas.getMousePosition(e);
                     const snappedPos = this.snapToGrid(mousePos);
+                    console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos, 'e.clientX:', e.clientX, 'e.clientY:', e.clientY);
                     const trackId = this.trackManager.generateTrackId();
                     let track = null;
+                    // デバッグログ追加
+                    console.log('[PREVIEW-INIT] e.clientX:', e.clientX, 'e.clientY:', e.clientY, 'scale:', this.canvas.scale);
+                    console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos);
                     switch (this.placingPartType) {
                         case 'point-left':
                             track = Track.createPreset(trackId, 'point_left', snappedPos.x, snappedPos.y);
@@ -1370,6 +1379,9 @@ class App {
                     this._previewPlacingTrackRotation = 0; // 回転角（ラジアン）
                     this._isDraggingPreview = true;
                     this._dragOffset = { x: 0, y: 0 };
+                    // 端点ログ
+                    console.log('[PREVIEW-INIT] track.endpoints:', track.endpoints);
+                    console.log('[PREVIEW-INIT] baseEndpoints:', this._previewPlacingTrackBaseEndpoints);
                     this.canvas.draw();
                 } else {
                     // クリックで確定配置
@@ -1424,26 +1436,25 @@ class App {
             if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType && this.placingPartType !== 'straight' && this._previewPlacingTrack && this._previewPlacingTrackBaseEndpoints) {
                 const mousePos = this.canvas.getMousePosition(e);
                 const snappedPos = this.snapToGrid(mousePos);
-                // 端点0をマウス位置に合わせて、初期形状を基準に全端点を再計算＋回転
                 const base = this._previewPlacingTrackBaseEndpoints[0];
                 const offsetX = snappedPos.x - base.x;
                 const offsetY = snappedPos.y - base.y;
-                // 回転角
                 const theta = this._previewPlacingTrackRotation || 0;
+                // デバッグ出力
+                console.log('[PREVIEW] mousePos:', mousePos, 'snappedPos:', snappedPos, 'base:', base, 'zoom:', this.canvas.scale, 'scrollLeft:', this.canvas.trackCanvas.parentElement.scrollLeft, 'scrollTop:', this.canvas.trackCanvas.parentElement.scrollTop);
                 // 回転＋平行移動
                 this._previewPlacingTrack.endpoints = this._previewPlacingTrackBaseEndpoints.map(pt => {
-                    // 基準点からの相対座標
                     const relX = pt.x - base.x;
                     const relY = pt.y - base.y;
-                    // 回転
                     const rotX = relX * Math.cos(theta) - relY * Math.sin(theta);
                     const rotY = relX * Math.sin(theta) + relY * Math.cos(theta);
-                    // 平行移動
                     return {
                         x: snappedPos.x + rotX,
                         y: snappedPos.y + rotY
                     };
                 });
+                // 端点ログ
+                console.log('[PREVIEW] preview endpoints:', this._previewPlacingTrack.endpoints);
                 this.canvas.draw();
                 // 仮パーツを本番ロジックで描画（色・透明度のみプレビュー用に変更）
                 const ctx = this.canvas.trackCanvas.getContext('2d');
