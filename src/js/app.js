@@ -1335,16 +1335,16 @@ class App {
                     if (this.canvas.scale !== 1) {
                         console.warn('[PREVIEW-INIT] scale!=1:', this.canvas.scale);
                     } else {
-                        console.log('[PREVIEW-INIT] scale:', this.canvas.scale);
+                        // console.log('[PREVIEW-INIT] scale:', this.canvas.scale);
                     }
                     const mousePos = this.canvas.getMousePosition(e);
                     const snappedPos = this.snapToGrid(mousePos);
-                    console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos, 'e.clientX:', e.clientX, 'e.clientY:', e.clientY);
+                    // console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos, 'e.clientX:', e.clientX, 'e.clientY:', e.clientY);
                     const trackId = this.trackManager.generateTrackId();
                     let track = null;
                     // デバッグログ追加
-                    console.log('[PREVIEW-INIT] e.clientX:', e.clientX, 'e.clientY:', e.clientY, 'scale:', this.canvas.scale);
-                    console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos);
+                    // console.log('[PREVIEW-INIT] e.clientX:', e.clientX, 'e.clientY:', e.clientY, 'scale:', this.canvas.scale);
+                    // console.log('[PREVIEW-INIT] mousePos:', mousePos, 'snappedPos:', snappedPos);
                     switch (this.placingPartType) {
                         case 'point-left':
                             track = Track.createPreset(trackId, 'point_left', snappedPos.x, snappedPos.y);
@@ -1380,8 +1380,8 @@ class App {
                     this._isDraggingPreview = true;
                     this._dragOffset = { x: 0, y: 0 };
                     // 端点ログ
-                    console.log('[PREVIEW-INIT] track.endpoints:', track.endpoints);
-                    console.log('[PREVIEW-INIT] baseEndpoints:', this._previewPlacingTrackBaseEndpoints);
+                    // console.log('[PREVIEW-INIT] track.endpoints:', track.endpoints);
+                    // console.log('[PREVIEW-INIT] baseEndpoints:', this._previewPlacingTrackBaseEndpoints);
                     this.canvas.draw();
                 } else {
                     // クリックで確定配置
@@ -1441,7 +1441,7 @@ class App {
                 const offsetY = snappedPos.y - base.y;
                 const theta = this._previewPlacingTrackRotation || 0;
                 // デバッグ出力
-                console.log('[PREVIEW] mousePos:', mousePos, 'snappedPos:', snappedPos, 'base:', base, 'zoom:', this.canvas.scale, 'scrollLeft:', this.canvas.trackCanvas.parentElement.scrollLeft, 'scrollTop:', this.canvas.trackCanvas.parentElement.scrollTop);
+                // console.log('[PREVIEW] mousePos:', mousePos, 'snappedPos:', snappedPos, 'base:', base, 'zoom:', this.canvas.scale, 'scrollLeft:', this.canvas.trackCanvas.parentElement.scrollLeft, 'scrollTop:', this.canvas.trackCanvas.parentElement.scrollTop);
                 // 回転＋平行移動
                 this._previewPlacingTrack.endpoints = this._previewPlacingTrackBaseEndpoints.map(pt => {
                     const relX = pt.x - base.x;
@@ -1454,7 +1454,7 @@ class App {
                     };
                 });
                 // 端点ログ
-                console.log('[PREVIEW] preview endpoints:', this._previewPlacingTrack.endpoints);
+                // console.log('[PREVIEW] preview endpoints:', this._previewPlacingTrack.endpoints);
                 this.canvas.draw();
                 // 仮パーツを本番ロジックで描画（色・透明度のみプレビュー用に変更）
                 const ctx = this.canvas.trackCanvas.getContext('2d');
@@ -3194,7 +3194,7 @@ class App {
 
         // プロパティHTMLを設定
         propertiesContainer.innerHTML = propertiesHTML;
-        // console.log('[DEBUG] propertiesHTML set', propertiesHTML);
+        // // console.log('[DEBUG] propertiesHTML set', propertiesHTML);
 
         // イベントリスナーを設定
         this.setupPropertyEventListeners(realElement, type);
@@ -3328,7 +3328,7 @@ class App {
      */
     setupPropertyEventListeners(element, type) {
         const container = this.selectedProperties;
-        // console.log('[DEBUG] setupPropertyEventListeners', container, element, type);
+        // // console.log('[DEBUG] setupPropertyEventListeners', container, element, type);
 
         // 名前変更イベントリスナー
         const nameInput = container.querySelector(`.${type}-name`);
@@ -3364,10 +3364,10 @@ class App {
 
         // 線路再割り当てボタン
         const reassignBtn = container.querySelector('.reassign-track');
-        // console.log('[DEBUG] reassignBtn', reassignBtn);
+        // // console.log('[DEBUG] reassignBtn', reassignBtn);
         if (reassignBtn) {
             reassignBtn.addEventListener('click', () => {
-                // console.log('[DEBUG] reassign-trackボタン押下', element, type);
+                // // console.log('[DEBUG] reassign-trackボタン押下', element, type);
                 this.startTrackReassignment(element, type);
             });
         }
@@ -3437,10 +3437,10 @@ class App {
         }
         this.isPlacingElement = true; // 再割り当て開始時にON
         const trackSelectHandler = (e) => {
-            // console.log('[DEBUG] trackSelectHandler発火', element, type);
+            // // console.log('[DEBUG] trackSelectHandler発火', element, type);
             const mousePos = this.canvas.getMousePosition(e);
             const clickedTrack = this.canvas.findTrackAtPosition(mousePos.x, mousePos.y);
-            // console.log('[DEBUG] clickedTrack', clickedTrack);
+            // // console.log('[DEBUG] clickedTrack', clickedTrack);
             if (clickedTrack) {
                 // 端点数チェック: 2端点以外は設置不可
                 if (!Array.isArray(clickedTrack.endpoints) || clickedTrack.endpoints.length !== 2) {
@@ -3462,14 +3462,14 @@ class App {
                     return;
                 }
                 // 選択された線路に要素を関連付け
-                // console.log('[DEBUG] element before update', element);
+                // // console.log('[DEBUG] element before update', element);
                 element.trackId = clickedTrack.id;
                 // endpointIndexが未定義なら0をセット
                 if (typeof element.endpointIndex !== 'number') {
                     element.endpointIndex = 0;
                 }
                 // プロパティパネルも即時更新
-                // console.log('[DEBUG] trackId/endpointIndex更新', element);
+                // // console.log('[DEBUG] trackId/endpointIndex更新', element);
                 this.updateSelectedProperties(element, type);
                 // 配置完了メッセージを表示
                 const label = (typeof elementInfo !== 'undefined' && elementInfo && elementInfo.title) ? elementInfo.title : (type === 'lever' ? 'てこ' : type === 'button' ? '着点ボタン' : '線路');
