@@ -38,11 +38,22 @@ class Route {
     }
 
     static fromJSON(json) {
+        // 許可ペア
+        const validPairs = [
+            [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+        ];
+        // pointsをフィルタ
+        const filteredPoints = (json.points || []).filter(pt => {
+            if ((pt.type === 'double_cross' || pt.type === 'double_slip_x') && typeof pt.fromEpIdx === 'number' && typeof pt.toEpIdx === 'number') {
+                return validPairs.some(([a,b]) => a === pt.fromEpIdx && b === pt.toEpIdx);
+            }
+            return true;
+        });
         const route = new Route(
             json.name,
             json.lever,
             json.destination,
-            json.points,
+            filteredPoints,
             json.isAuto
         );
         route.id = json.id;
@@ -455,6 +466,12 @@ class RouteManager {
                 }
                 let addVisitedTrackIdInternalMove = false;
                 if (node.track.type === 'double_cross' || node.track.type === 'double_slip_x') {
+                    // ダブルクロスの許可ペア以外はスキップ
+                    const validPairs = [
+                        [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+                    ];
+                    const isValid = validPairs.some(([a,b]) => a === node.epIdx && b === nextEpIdx);
+                    if (!isValid) continue;
                     const stepKey = `${node.track.id}:${node.epIdx}:${nextEpIdx}`;
                     if (node.visitedSteps.has(stepKey)) {
                         console.debug(`[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（多端点track端点ペア再通過禁止）`);
@@ -532,6 +549,14 @@ class RouteManager {
                 if (Number(fromIdx) !== node.epIdx) continue;
                 const nextTrack = allTracks.find(t => String(t.id) === String(conn.trackId));
                 if (!nextTrack) continue;
+                // --- 追加: ダブルクロス/ダブルスリップのtrack間接続も許可ペア以外は除外 ---
+                if (nextTrack.type === 'double_cross' || nextTrack.type === 'double_slip_x') {
+                    const validPairs = [
+                        [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+                    ];
+                    const isValid = validPairs.some(([a,b]) => a === node.epIdx && b === conn.endpointIndex);
+                    if (!isValid) continue;
+                }
                 // track間移動で入ったtrackIdの再入場禁止
                 if (node.visitedTrackIdsByConnection && node.visitedTrackIdsByConnection.has(nextTrack.id)) {
                     console.debug(`[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}（track間移動再入場禁止）`);
