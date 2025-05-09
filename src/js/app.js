@@ -1436,13 +1436,12 @@ class App {
             if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType && this.placingPartType !== 'straight' && this._previewPlacingTrack && this._previewPlacingTrackBaseEndpoints) {
                 const mousePos = this.canvas.getMousePosition(e);
                 const snappedPos = this.snapToGrid(mousePos);
+                // 0番端点を基準にする
                 const base = this._previewPlacingTrackBaseEndpoints[0];
                 const offsetX = snappedPos.x - base.x;
                 const offsetY = snappedPos.y - base.y;
                 const theta = this._previewPlacingTrackRotation || 0;
-                // デバッグ出力
-                // console.log('[PREVIEW] mousePos:', mousePos, 'snappedPos:', snappedPos, 'base:', base, 'zoom:', this.canvas.scale, 'scrollLeft:', this.canvas.trackCanvas.parentElement.scrollLeft, 'scrollTop:', this.canvas.trackCanvas.parentElement.scrollTop);
-                // 回転＋平行移動
+                // 回転＋平行移動（0番端点基準）
                 this._previewPlacingTrack.endpoints = this._previewPlacingTrackBaseEndpoints.map(pt => {
                     const relX = pt.x - base.x;
                     const relY = pt.y - base.y;
@@ -1453,16 +1452,19 @@ class App {
                         y: snappedPos.y + rotY
                     };
                 });
-                // 端点ログ
-                // console.log('[PREVIEW] preview endpoints:', this._previewPlacingTrack.endpoints);
                 this.canvas.draw();
                 // 仮パーツを本番ロジックで描画（色・透明度のみプレビュー用に変更）
                 const ctx = this.canvas.trackCanvas.getContext('2d');
                 ctx.save();
+                ctx.scale(this.canvas.scale, this.canvas.scale);
+                const container = this.canvas.trackCanvas.parentElement;
+                const previewOffsetX = container.scrollLeft / this.canvas.scale;
+                const previewOffsetY = container.scrollTop / this.canvas.scale;
+                ctx.translate(-previewOffsetX, -previewOffsetY);
                 ctx.globalAlpha = 0.5;
                 ctx.strokeStyle = '#FF9800';
                 ctx.setLineDash([6, 6]);
-                this.canvas.drawTrack(this._previewPlacingTrack, this.canvas.scale, true);
+                this.canvas.drawTrack(this._previewPlacingTrack, 1, true);
                 ctx.setLineDash([]);
                 ctx.restore();
             }
