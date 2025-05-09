@@ -1311,9 +1311,15 @@ class App {
                 if (!this._placingStraightStart) {
                     // 1点目（始点）
                     this._placingStraightStart = snappedPos;
+                    // 仮Track生成
+                    this._previewPlacingTrack = new Track('preview', 'straight');
+                    this._previewPlacingTrack.endpoints = [
+                        { x: snappedPos.x, y: snappedPos.y },
+                        { x: snappedPos.x, y: snappedPos.y }
+                    ];
                     this.setStatusInfo('直線の始点を指定しました。終点をクリックしてください。');
-                    // プレビュー用に記録
                     this._placingStraightPreview = true;
+                    this.canvas.draw();
                 } else {
                     // 2点目（終点）
                     const start = this._placingStraightStart;
@@ -1324,6 +1330,7 @@ class App {
                     this.setStatusInfo('直線を配置しました。続けて配置できます。');
                     this._placingStraightStart = null;
                     this._placingStraightPreview = false;
+                    this._previewPlacingTrack = null;
                     this.canvas.draw();
                 }
                 return;
@@ -1417,20 +1424,12 @@ class App {
         // プレビュー描画・ドラッグ追従
         this.canvas.trackCanvas.addEventListener('mousemove', (e) => {
             // 直線パーツプレビュー
-            if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType === 'straight' && this._placingStraightStart) {
+            if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType === 'straight' && this._placingStraightStart && this._previewPlacingTrack) {
                 const mousePos = this.canvas.getMousePosition(e);
                 const snappedPos = this.snapToGrid(mousePos);
+                this._previewPlacingTrack.endpoints[1].x = snappedPos.x;
+                this._previewPlacingTrack.endpoints[1].y = snappedPos.y;
                 this.canvas.draw();
-                const ctx = this.canvas.trackCanvas.getContext('2d');
-                ctx.save();
-                ctx.strokeStyle = '#2196F3';
-                ctx.lineWidth = 3;
-                ctx.setLineDash([8, 8]);
-                ctx.beginPath();
-                ctx.moveTo(this._placingStraightStart.x, this._placingStraightStart.y);
-                ctx.lineTo(snappedPos.x, snappedPos.y);
-                ctx.stroke();
-                ctx.restore();
             }
             // 分岐器などの仮パーツプレビュー
             if (this.appMode === 'edit' && this.drawMode === 'place' && this.placingPartType && this.placingPartType !== 'straight' && this._previewPlacingTrack && this._previewPlacingTrackBaseEndpoints) {
@@ -1453,20 +1452,6 @@ class App {
                     };
                 });
                 this.canvas.draw();
-                // 仮パーツを本番ロジックで描画（色・透明度のみプレビュー用に変更）
-                const ctx = this.canvas.trackCanvas.getContext('2d');
-                ctx.save();
-                ctx.scale(this.canvas.scale, this.canvas.scale);
-                const container = this.canvas.trackCanvas.parentElement;
-                const previewOffsetX = container.scrollLeft / this.canvas.scale;
-                const previewOffsetY = container.scrollTop / this.canvas.scale;
-                ctx.translate(-previewOffsetX, -previewOffsetY);
-                ctx.globalAlpha = 0.5;
-                ctx.strokeStyle = '#FF9800';
-                ctx.setLineDash([6, 6]);
-                this.canvas.drawTrack(this._previewPlacingTrack, 1, true);
-                ctx.setLineDash([]);
-                ctx.restore();
             }
         });
         
@@ -1479,12 +1464,10 @@ class App {
                 return;
             }
             // 直線配置中の場合は配置をキャンセル
-            if (this.canvas.drawState && this.canvas.drawState.isDrawing) {
-                this.canvas.drawState = {
-                    isDrawing: false,
-                    startPoint: null,
-                    previewTrack: null
-                };
+            if (this._placingStraightStart || this._placingStraightPreview || this._previewPlacingTrack) {
+                this._placingStraightStart = null;
+                this._placingStraightPreview = false;
+                this._previewPlacingTrack = null;
                 this.canvas.draw();
                 this.setStatusInfo('直線の配置をキャンセルしました');
                 return;
