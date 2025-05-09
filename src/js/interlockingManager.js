@@ -510,9 +510,56 @@ class InterlockingManager {
         });
         
         // 発点てこの描画
-        this.collections.lever.forEach(lever => {
-            lever.draw(ctx);
-        });
+        for (const lever of this.startLevers) {
+            if (typeof lever.endpointIndex !== 'number') lever.endpointIndex = 0;
+            let angle = 0;
+            if (window.routeManager && window.routeManager.routes) {
+                for (const route of window.routeManager.routes.values()) {
+                    if (route.isActive && route.lever && route.lever.id === lever.id && route.points && route.points.length > 0) {
+                        // lever.trackIdを持つstepを探す（fromEpIdx/toEpIdxが両方numberのstepを優先）
+                        let step = route.points.find(
+                            pt => String(pt.trackId) === String(lever.trackId) &&
+                                  typeof pt.fromEpIdx === 'number' &&
+                                  typeof pt.toEpIdx === 'number'
+                        );
+                        // fallback: fromEpIdxがnullの場合はtoEpIdxだけ一致するstep
+                        if (!step) {
+                            step = route.points.find(
+                                pt => String(pt.trackId) === String(lever.trackId) && typeof pt.toEpIdx === 'number'
+                            );
+                        }
+                        const track = window.app.trackManager.getTrack(lever.trackId);
+                        let fromPt = null, toPt = null;
+                        if (step && track) {
+                            if (typeof step.fromEpIdx === 'number' && typeof step.toEpIdx === 'number') {
+                                fromPt = track.endpoints[step.fromEpIdx];
+                                toPt = track.endpoints[step.toEpIdx];
+                            } else if (typeof step.toEpIdx === 'number') {
+                                fromPt = track.endpoints[lever.endpointIndex || 0];
+                                toPt = track.endpoints[step.toEpIdx];
+                            }
+                            if (fromPt && toPt && (fromPt.x !== toPt.x || fromPt.y !== toPt.y)) {
+                                angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x) + Math.PI / 4;
+                            }
+                        }
+                        // デバッグ出力
+                        console.log('[LEVER-ANGLE-DEBUG]', {
+                            leverId: lever.id,
+                            leverTrackId: lever.trackId,
+                            leverEndpointIndex: lever.endpointIndex,
+                            routeLeverId: route.lever && route.lever.id,
+                            stepTrackId: step && step.trackId,
+                            stepFromEpIdx: step && step.fromEpIdx,
+                            stepToEpIdx: step && step.toEpIdx,
+                            fromPt,
+                            toPt,
+                            angle
+                        });
+                    }
+                }
+            }
+            lever.draw(ctx, window.app.canvas.scale, angle);
+        }
         
         // 選択中の要素のハイライト
         if (this.editModeState.selectedElement) {
@@ -548,7 +595,8 @@ class InterlockingManager {
                 type: lever.type,
                 position: { x: lever.x, y: lever.y },
                 trackId: lever.trackId,
-                routes: lever.routes?.map(route => route.id) || []
+                routes: lever.routes?.map(route => route.id) || [],
+                endpointIndex: lever.endpointIndex
             })),
             destinationButtons: this.collections.button.map(button => ({
                 id: button.id,
@@ -609,6 +657,7 @@ class InterlockingManager {
                     item.position.y,
                     item.trackId
                 );
+                lever.endpointIndex = (typeof item.endpointIndex === 'number') ? item.endpointIndex : 0;
                 this.collections.lever.push(lever);
             });
         }

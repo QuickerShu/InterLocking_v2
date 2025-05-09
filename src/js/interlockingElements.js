@@ -233,77 +233,40 @@ class StartLever extends InterlockingElement {
      * 発点てこの描画処理
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
      * @param {number} scale - キャンバスの拡大縮小倍率
+     * @param {number} [angle] - 進路方向＋45度（ラジアン）
      */
-    draw(ctx, scale = 1) {
-        ctx.save();  // 現在の描画状態を保存
-        
-        // --- 線路指定待ち強調 ---
-        if (this.isPendingTrackAssign) {
-            const now = Date.now();
-            const blink = Math.floor(now / 500) % 2 === 0;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(this.x ?? 0, this.y ?? 0, 16 / scale, 0, Math.PI * 2);
-            ctx.lineWidth = 4 / scale;
-            ctx.strokeStyle = blink ? 'rgba(255,128,0,0.9)' : 'rgba(255,200,0,0.7)';
-            ctx.setLineDash([6, 6]);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.restore();
-        }
-        // --- ここまで ---
-        
-        // てこの位置に移動して回転
+    draw(ctx, scale = 1, angle = 0) {
+        console.log('draw angle', angle, this.id);
+        ctx.save();
+        // 位置へ移動
         ctx.translate(this.x, this.y);
-        
-        // てこの状態に応じた回転角度 (ラジアン)
-        let rotation = 0;
-        if (this.state === LEVER_STATES.LEFT) rotation = -Math.PI / 6;  // -30度
-        if (this.state === LEVER_STATES.RIGHT) rotation = Math.PI / 6;  // 30度
-        
-        ctx.rotate(rotation);
-        
-        // てこの基本色
-        const baseColor = LEVER_COLORS[this.type];
-        
-        // てこの描画 (基本的な長方形と丸い取っ手)
-        // ベース部分 (長方形)
-        ctx.fillStyle = '#333333';  // 暗めのグレー
-        ctx.fillRect(-5 / scale, 0, 10 / scale, 25 / scale);
-        
-        // 取っ手部分 (丸)
-        ctx.fillStyle = baseColor;
-        
-        // 進路開通中は点滅させる
-        if (this.animation.active) {
-            this.animation.blinkCount++;
-            if (this.animation.blinkCount > 30) {
-                this.animation.blink = !this.animation.blink;
-                this.animation.blinkCount = 0;
-            }
-            
-            if (this.animation.blink) {
-                ctx.fillStyle = '#FFFF00'; // 黄色
-            }
+        // 角度指定があれば回転（0でも必ず回転）
+        if (typeof angle !== 'number' || isNaN(angle)) {
+            console.warn('[LEVER-ANGLE-WARN] angle is NaN or not a number:', angle, this.id);
+            angle = 0;
         }
-        
+        ctx.rotate(angle);
+        // てこ本体
         ctx.beginPath();
-        ctx.arc(0, -5 / scale, 8 / scale, 0, Math.PI * 2);
+        ctx.arc(0, 0, 16 / scale, 0, Math.PI * 2);
+        ctx.fillStyle = this.animation.active ? '#ff9800' : '#fff';
         ctx.fill();
-        
-        // 選択状態の表示
-        if (this.selected) {
-            ctx.strokeStyle = '#00FFFF';  // 水色
-            ctx.lineWidth = 2 / scale;
-            ctx.beginPath();
-            ctx.arc(0, -5 / scale, 10 / scale, 0, Math.PI * 2);
-            ctx.stroke();
-            
-            // ベース部分も強調
-            ctx.strokeRect(-6 / scale, -1 / scale, 12 / scale, 27 / scale);
-        }
-        
-        ctx.restore();  // 保存した描画状態に戻す
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2 / scale;
+        ctx.stroke();
+        // てこの棒
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, -24 / scale);
+        ctx.strokeStyle = this.animation.active ? '#ff9800' : '#333';
+        ctx.lineWidth = 4 / scale;
+        ctx.stroke();
+        // ラベル
+        ctx.font = `${12 / scale}px Arial`;
+        ctx.fillStyle = '#333';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.name || '', 0, 28 / scale);
+        ctx.restore();
     }
     
     /**
