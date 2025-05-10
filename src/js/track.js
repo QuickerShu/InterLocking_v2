@@ -24,13 +24,12 @@ class Track {
     getTrackTypeName(type) {
         const typeNames = {
             'straight': '直線',
-            'curve': '曲線',
-            'point_left': '左分岐',
-            'point_right': '右分岐',
-            'double_slip': '交差両分岐',
-            'double_slip_x': '交差両分岐X',
-            'crossing': '交差',
-            'end': '端部'
+            'point_left': 'CL',
+            'point_right': 'CR',
+            'double_slip': 'DX',
+            'double_slip_x': 'DS',
+            'crossing': 'X',
+            'end': 'END'
         };
         return typeNames[type] || type;
     }

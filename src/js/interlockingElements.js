@@ -182,7 +182,7 @@ class DestinationButton extends InterlockingElement {
         if (showNames) {
             ctx.save();
             ctx.font = `${12 / scale}px Meiryo UI, Arial`;
-            ctx.fillStyle = '#222';
+            ctx.fillStyle = (window.app && window.app.interlockingNameFontColor) ? window.app.interlockingNameFontColor : '#0074D9';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.globalAlpha = 0.85;
@@ -269,7 +269,7 @@ class StartLever extends InterlockingElement {
         // 名称描画
         if (showNames) {
             ctx.font = `${12 / scale}px Meiryo UI, Arial`;
-            ctx.fillStyle = '#222';
+            ctx.fillStyle = (window.app && window.app.interlockingNameFontColor) ? window.app.interlockingNameFontColor : '#0074D9';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.globalAlpha = 0.85;

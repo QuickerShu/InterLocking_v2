@@ -72,6 +72,7 @@ class App {
         this.updateToggleButtonStates();
 
         this.isInterlockingRepeatMode = false; // 連続配置モード
+        this.interlockingNameFontColor = '#0074D9'; // 連動要素名称色（デフォルト青）
     }
 
     // ツールバーの設定
@@ -169,6 +170,15 @@ class App {
             this.canvas.nameFontColor = e.target.value;
             this.canvas.draw();
         });
+        // 連動要素名称色カラーピッカー
+        const interlockingNameFontColorPicker = document.getElementById('interlockingNameFontColorPicker');
+        if (interlockingNameFontColorPicker) {
+            interlockingNameFontColorPicker.value = this.interlockingNameFontColor;
+            interlockingNameFontColorPicker.addEventListener('input', (e) => {
+                this.interlockingNameFontColor = e.target.value;
+                this.canvas.draw();
+            });
+        }
         
         // キャンバスサイズ変更ボタンを追加
         const visibilityBtn = document.getElementById('visibility');
