@@ -1808,69 +1808,111 @@ class App {
         // --- 進路選択処理（操作モード時） ---
         if (this.appMode === 'operation') {
             const mousePos = this.getScaledMousePosition(event);
-            // てこ（発点てこ）がクリックされたか判定
-            const lever = this.interlockingManager.startLevers.find(l => {
-                const dx = (l.x ?? l.position?.x ?? 0) - mousePos.x;
-                const dy = (l.y ?? l.position?.y ?? 0) - mousePos.y;
-                return Math.sqrt(dx * dx + dy * dy) < 20;
-            });
-            if (lever) {
-                this.selectedRouteStartLever = lever;
-                this.selectedRouteDestButton = null;
-                this.setStatusInfo(`発点てこ「${lever.id}」を選択しました。次に着点ボタンをクリックしてください。`);
-                return;
-            }
-            // 着点ボタンがクリックされたか判定
-            const button = this.interlockingManager.destinationButtons.find(b => {
-                const dx = (b.x ?? b.position?.x ?? 0) - mousePos.x;
-                const dy = (b.y ?? b.position?.y ?? 0) - mousePos.y;
-                return Math.sqrt(dx * dx + dy * dy) < 20;
-            });
-            if (button && this.selectedRouteStartLever) {
-                this.selectedRouteDestButton = button;
-                // --- 追加: routesから該当進路を検索し自動開通 ---
-                if (window.routeManager && window.routeManager.routes) {
-                    const foundRoute = Array.from(window.routeManager.routes.values()).find(route =>
-                        route.lever.id === this.selectedRouteStartLever.id &&
-                        route.destination.id === button.id
-                    );
-                    if (foundRoute) {
-                        window.routeManager.activateRoute(foundRoute.id);
-                        this.setStatusInfo(`進路「${foundRoute.lever.id}→${foundRoute.destination.id}」を開通しました。`);
-                    } else {
-                        this.setStatusInfo('該当する進路候補がありません。', true);
-                    }
+            if (this.selectionTarget === 'element') {
+                // てこ（発点てこ）がクリックされたか判定
+                const lever = this.interlockingManager.startLevers.find(l => {
+                    const dx = (l.x ?? l.position?.x ?? 0) - mousePos.x;
+                    const dy = (l.y ?? l.position?.y ?? 0) - mousePos.y;
+                    return Math.sqrt(dx * dx + dy * dy) < 20;
+                });
+                if (lever) {
+                    this.selectedRouteStartLever = lever;
+                    this.selectedRouteDestButton = null;
+                    this.setStatusInfo(`発点てこ「${lever.id}」を選択しました。次に着点ボタンをクリックしてください。`);
+                    this.canvas.selectedTrack = null;
+                    this.canvas.selectedEndpoint = null;
+                    return;
                 }
-                // 状態リセット
-                this.selectedRouteStartLever = null;
-                this.selectedRouteDestButton = null;
+                // 着点ボタンがクリックされたか判定
+                const button = this.interlockingManager.destinationButtons.find(b => {
+                    const dx = (b.x ?? b.position?.x ?? 0) - mousePos.x;
+                    const dy = (b.y ?? b.position?.y ?? 0) - mousePos.y;
+                    return Math.sqrt(dx * dx + dy * dy) < 20;
+                });
+                if (button && this.selectedRouteStartLever) {
+                    this.selectedRouteDestButton = button;
+                    // --- 追加: routesから該当進路を検索し自動開通 ---
+                    if (window.routeManager && window.routeManager.routes) {
+                        const foundRoute = Array.from(window.routeManager.routes.values()).find(route =>
+                            route.lever.id === this.selectedRouteStartLever.id &&
+                            route.destination.id === button.id
+                        );
+                        if (foundRoute) {
+                            window.routeManager.activateRoute(foundRoute.id);
+                            this.setStatusInfo(`進路「${foundRoute.lever.id}→${foundRoute.destination.id}」を開通しました。`);
+                        } else {
+                            this.setStatusInfo('該当する進路候補がありません。', true);
+                        }
+                    }
+                    // 状態リセット
+                    this.selectedRouteStartLever = null;
+                    this.selectedRouteDestButton = null;
+                    this.canvas.selectedTrack = null;
+                    this.canvas.selectedEndpoint = null;
+                    return;
+                }
+                // 連動要素以外は何もしない
+                this.canvas.selectedTrack = null;
+                this.canvas.selectedEndpoint = null;
                 return;
-            }
-            // --- 分岐器クリックで開通方向を切り替え ---
-            if (track && track.type && track.type.startsWith('point_')) {
-                const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
-                this.trackManager.switchPoint(track.id, newDirection);
-                this.setStatusInfo(`ポイントID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
-                this.canvas.draw();
-                return;
-            }
-            // --- 分岐器・ダブルクロス・ダブルスリップクリックで開通方向を切り替え ---
-            if (track && track.type && (track.type.startsWith('point_') || track.type === 'double_cross' || track.type === 'double_slip_x')) {
-                if (track.type === 'double_cross') {
-                    const newDirection = track.pointDirection === 'straight' ? 'cross' : 'straight';
-                    if (track.setCrossDirection) await track.setCrossDirection(newDirection);
-                    this.setStatusInfo(`ダブルクロスID:${track.id} を${newDirection === 'straight' ? '直進' : 'クロス'}に切り替えました`);
-                } else {
+            } else if (this.selectionTarget === 'track') {
+                // --- 分岐器クリックで開通方向を切り替え ---
+                if (track && track.type && track.type.startsWith('point_')) {
                     const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
                     this.trackManager.switchPoint(track.id, newDirection);
-                    let typeLabel = 'ポイント';
-                    if (track.type === 'double_slip_x') typeLabel = 'ダブルスリップ';
-                    this.setStatusInfo(`${typeLabel}ID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                    this.setStatusInfo(`ポイントID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                    this.canvas.draw();
+                    return;
                 }
-                this.canvas.draw();
+                // --- 分岐器・ダブルクロス・ダブルスリップクリックで開通方向を切り替え ---
+                if (track && track.type && (track.type === 'double_cross' || track.type === 'double_slip_x')) {
+                    if (track.type === 'double_cross') {
+                        const newDirection = track.pointDirection === 'straight' ? 'cross' : 'straight';
+                        if (track.setCrossDirection) await track.setCrossDirection(newDirection);
+                        this.setStatusInfo(`ダブルクロスID:${track.id} を${newDirection === 'straight' ? '直進' : 'クロス'}に切り替えました`);
+                    } else {
+                        const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                        this.trackManager.switchPoint(track.id, newDirection);
+                        let typeLabel = 'ポイント';
+                        if (track.type === 'double_slip_x') typeLabel = 'ダブルスリップ';
+                        this.setStatusInfo(`${typeLabel}ID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                    }
+                    this.canvas.draw();
+                    return;
+                }
+                // 線路選択処理（従来通り）
+                if (track) {
+                    const endpointThreshold = 10 * (this.canvas.trackCanvas.width / this.canvas.trackCanvas.getBoundingClientRect().width);
+                    let minDistance = Infinity;
+                    let nearestEndpointIndex = -1;
+                    track.endpoints.forEach((endpoint, index) => {
+                        const dx = endpoint.x - mousePos.x;
+                        const dy = endpoint.y - mousePos.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestEndpointIndex = index;
+                        }
+                    });
+                    if (minDistance <= endpointThreshold) {
+                        this.canvas.selectedTrack = track;
+                        this.canvas.selectedEndpoint = nearestEndpointIndex;
+                        this.setStatusInfo(`端点 ${nearestEndpointIndex + 1} を選択しました`);
+                    } else {
+                        this.canvas.selectedTrack = track;
+                        this.canvas.selectedEndpoint = null;
+                        this.updateSelectedProperties(track, 'track');
+                        this.setStatusInfo(`パーツ ID: ${track.id} を選択しました`);
+                    }
+                    this.interlockingManager.editModeState.selectedElement = null;
+                    this.interlockingManager.editModeState.elementType = null;
+                    this.canvas.draw();
+                    return;
+                }
+                // 線路以外は何もしない
                 return;
             }
-            // どちらも該当しない場合は通常の選択処理をスキップ
+            // どちらでもない場合は何も選択しない
             return;
         }
         // --- 既存の編集モード等の処理はそのまま ---
