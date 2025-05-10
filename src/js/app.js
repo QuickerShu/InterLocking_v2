@@ -169,19 +169,20 @@ class App {
         });
         // 名称フォント色カラーピッカー
         const nameFontColorPicker = document.getElementById('nameFontColorPicker');
-        nameFontColorPicker.value = this.canvas.nameFontColor;
-        nameFontColorPicker.addEventListener('input', (e) => {
-            this.canvas.nameFontColor = e.target.value;
-            this.canvas.draw();
-        });
-        // 連動要素名称色カラーピッカー
+        if (nameFontColorPicker) {
+            let color = nameFontColorPicker.value;
+            if (!color || color === 'undefined' || typeof color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                color = '#222222';
+            }
+            nameFontColorPicker.value = color;
+        }
         const interlockingNameFontColorPicker = document.getElementById('interlockingNameFontColorPicker');
         if (interlockingNameFontColorPicker) {
-            interlockingNameFontColorPicker.value = this.interlockingNameFontColor;
-            interlockingNameFontColorPicker.addEventListener('input', (e) => {
-                this.interlockingNameFontColor = e.target.value;
-                this.canvas.draw();
-            });
+            let color = interlockingNameFontColorPicker.value;
+            if (!color || color === 'undefined' || typeof color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                color = '#0074D9';
+            }
+            interlockingNameFontColorPicker.value = color;
         }
         
         // キャンバスサイズ変更ボタンを追加
@@ -3688,7 +3689,13 @@ class App {
     // 表示切替ボタンの共通ハンドラ生成関数
     createToggleButtonHandler(canvasMethod, btnId) {
         return () => {
-            this.canvas[canvasMethod]();
+            // canvasMethod呼び出し前のガード
+            if (typeof canvasMethod === 'string' && typeof this.canvas[canvasMethod] === 'function') {
+                this.canvas[canvasMethod]();
+            } else {
+                // 無効なメソッド名や未定義の場合は何もしない
+                // console.warn('無効なcanvasメソッド:', canvasMethod);
+            }
             document.getElementById(btnId).classList.toggle('active');
         };
     }

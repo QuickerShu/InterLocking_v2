@@ -174,6 +174,11 @@ class InterlockingManager {
      * @private
      */
     _handleDeleteModeClick(x, y) {
+        // x, y の妥当性チェック
+        if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
+            console.warn('削除モード: 無効な座標(x, y)が指定されました', x, y);
+            return;
+        }
         // 連動要素（てこや着点ボタン、絶縁）の位置判定と削除
         const element = this._findInterlockingElementAtPosition(x, y);
         if (element) {
@@ -195,9 +200,13 @@ class InterlockingManager {
      * @private
      */
     _handleSelectModeClick(x, y) {
+        // x, y の妥当性チェック
+        if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
+            console.warn('選択モード: 無効な座標(x, y)が指定されました', x, y);
+            return;
+        }
         // 連動要素の選択
         const element = this._findInterlockingElementAtPosition(x, y);
-        
         if (element) {
             this.setSelection(element.element, element.type, x, y);
         } else {
