@@ -535,26 +535,27 @@ class InterlockingManager {
                                 fromPt = track.endpoints[step.fromEpIdx];
                                 toPt = track.endpoints[step.toEpIdx];
                             } else if (typeof step.toEpIdx === 'number') {
+                                // fromEpIdxがnullの場合も、fromPtをlever.endpointIndexで補完
                                 fromPt = track.endpoints[lever.endpointIndex || 0];
                                 toPt = track.endpoints[step.toEpIdx];
                             }
+                            // fromPt/toPtが両方取得でき、かつ座標が異なる場合のみ角度計算
                             if (fromPt && toPt && (fromPt.x !== toPt.x || fromPt.y !== toPt.y)) {
                                 angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x) + Math.PI / 4;
+                                console.log('[LEVER-ANGLE-DEBUG]', {
+                                    leverId: lever.id,
+                                    leverTrackId: lever.trackId,
+                                    leverEndpointIndex: lever.endpointIndex,
+                                    fromPt,
+                                    toPt,
+                                    dx: toPt.x - fromPt.x,
+                                    dy: toPt.y - fromPt.y,
+                                    angleDeg: angle * 180 / Math.PI,
+                                    routeId: route.id,
+                                    step
+                                });
                             }
                         }
-                        // デバッグ出力
-                        console.log('[LEVER-ANGLE-DEBUG]', {
-                            leverId: lever.id,
-                            leverTrackId: lever.trackId,
-                            leverEndpointIndex: lever.endpointIndex,
-                            routeLeverId: route.lever && route.lever.id,
-                            stepTrackId: step && step.trackId,
-                            stepFromEpIdx: step && step.fromEpIdx,
-                            stepToEpIdx: step && step.toEpIdx,
-                            fromPt,
-                            toPt,
-                            angle
-                        });
                     }
                 }
             }
