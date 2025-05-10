@@ -152,7 +152,7 @@ class DestinationButton extends InterlockingElement {
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
      * @param {number} scale - キャンバスの拡大縮小倍率
      */
-    draw(ctx, scale = 1) {
+    draw(ctx, scale = 1, showNames = false) {
         ctx.save();  // 現在の描画状態を保存
         // --- 線路指定待ち強調 ---
         if (this.isPendingTrackAssign) {
@@ -178,6 +178,17 @@ class DestinationButton extends InterlockingElement {
         ctx.arc(this.x, this.y, 10 / scale, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
+        // 名称描画
+        if (showNames) {
+            ctx.save();
+            ctx.font = `${12 / scale}px Meiryo UI, Arial`;
+            ctx.fillStyle = '#222';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.globalAlpha = 0.85;
+            ctx.fillText(this.name || '', this.x, this.y + 12 / scale);
+            ctx.restore();
+        }
         ctx.restore();  // 保存した描画状態に戻す
     }
 
@@ -235,18 +246,13 @@ class StartLever extends InterlockingElement {
      * @param {number} scale - キャンバスの拡大縮小倍率
      * @param {number} [angle] - 進路方向＋45度（ラジアン）
      */
-    draw(ctx, scale = 1, angle = 0) {
-        console.log('draw angle', angle, this.id);
+    draw(ctx, scale = 1, angle = 0, showNames = false) {
         ctx.save();
-        // 位置へ移動
         ctx.translate(this.x, this.y);
-        // 角度指定があれば回転（0でも必ず回転）
         if (typeof angle !== 'number' || isNaN(angle)) {
-            console.warn('[LEVER-ANGLE-WARN] angle is NaN or not a number:', angle, this.id);
             angle = 0;
         }
         ctx.rotate(angle);
-        // てこ本体
         ctx.beginPath();
         ctx.arc(0, 0, 16 / scale, 0, Math.PI * 2);
         ctx.fillStyle = this.animation.active ? '#ff9800' : '#fff';
@@ -254,18 +260,21 @@ class StartLever extends InterlockingElement {
         ctx.strokeStyle = '#333';
         ctx.lineWidth = 2 / scale;
         ctx.stroke();
-        // てこの棒
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.lineTo(0, -24 / scale);
         ctx.strokeStyle = this.animation.active ? '#ff9800' : '#333';
         ctx.lineWidth = 4 / scale;
         ctx.stroke();
-        // ラベル
-        ctx.font = `${12 / scale}px Arial`;
-        ctx.fillStyle = '#333';
-        ctx.textAlign = 'center';
-        ctx.fillText(this.name || '', 0, 28 / scale);
+        // 名称描画
+        if (showNames) {
+            ctx.font = `${12 / scale}px Meiryo UI, Arial`;
+            ctx.fillStyle = '#222';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.globalAlpha = 0.85;
+            ctx.fillText(this.name || '', 0, 18 / scale);
+        }
         ctx.restore();
     }
     
@@ -422,54 +431,54 @@ class TrackInsulation {
      * @param {CanvasRenderingContext2D} ctx - Canvas 2D コンテキスト
      * @param {number} scale - キャンバスの拡大縮小倍率
      */
-    draw(ctx, scale = 1) {
+    draw(ctx, scale = 1, showNames = false) {
         if (this.selected) {
             ctx.strokeStyle = '#FF0000';
         } else {
             ctx.strokeStyle = '#000000';
         }
-        
         ctx.lineWidth = 1 / scale;
-        
-        // 絶縁のタイプに基づいて描画
         if (this.type === INSULATION_TYPES.STRAIGHT) {
-            // 直線絶縁
             ctx.beginPath();
             ctx.moveTo(-15 / scale, 0);
             ctx.lineTo(-5 / scale, 0);
             ctx.stroke();
-            
             ctx.beginPath();
             ctx.moveTo(5 / scale, 0);
             ctx.lineTo(15 / scale, 0);
             ctx.stroke();
-            
-            // 絶縁部分（空白）を白い短い線で表現
             ctx.strokeStyle = '#FFFFFF';
             ctx.lineWidth = 2 / scale;
             ctx.beginPath();
             ctx.moveTo(-5 / scale, 0);
             ctx.lineTo(5 / scale, 0);
             ctx.stroke();
-            
             ctx.beginPath();
             ctx.moveTo(-5 / scale, -5 / scale);
             ctx.lineTo(5 / scale, -5 / scale);
             ctx.stroke();
-            
             ctx.beginPath();
             ctx.moveTo(-5 / scale, 5 / scale);
             ctx.lineTo(5 / scale, 5 / scale);
             ctx.stroke();
         }
-        
-        // 選択された場合の表示を追加
         if (this.selected) {
             ctx.strokeStyle = '#FF0000';
             ctx.lineWidth = 1 / scale;
             ctx.beginPath();
             ctx.arc(0, 0, 20 / scale, 0, Math.PI * 2);
             ctx.stroke();
+        }
+        // 名称描画
+        if (showNames) {
+            ctx.save();
+            ctx.font = `${12 / scale}px Meiryo UI, Arial`;
+            ctx.fillStyle = '#222';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.globalAlpha = 0.85;
+            ctx.fillText(this.id || '', this.position?.x || 0, (this.position?.y || 0) + 12 / scale);
+            ctx.restore();
         }
     }
     

@@ -498,15 +498,15 @@ class InterlockingManager {
      * 要素の描画
      * @param {CanvasRenderingContext2D} ctx キャンバスコンテキスト
      */
-    draw(ctx) {
+    draw(ctx, showNames = false) {
         // 線路絶縁の描画
         this.collections.insulation.forEach(insulation => {
-            insulation.draw(ctx);
+            insulation.draw(ctx, 1, showNames);
         });
         
         // 着点ボタンの描画
         this.collections.button.forEach(button => {
-            button.draw(ctx);
+            button.draw(ctx, 1, showNames);
         });
         
         // 発点てこの描画
@@ -559,7 +559,7 @@ class InterlockingManager {
                     }
                 }
             }
-            lever.draw(ctx, window.app.canvas.scale, angle);
+            lever.draw(ctx, window.app.canvas.scale, angle, showNames);
         }
         
         // 選択中の要素のハイライト

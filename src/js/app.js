@@ -156,6 +156,19 @@ class App {
             this.canvas.toggleConnectionLabels();
             document.getElementById('toggleLabelsBtn').classList.toggle('active');
         });
+        // 名称表示トグルボタン
+        document.getElementById('toggleNamesBtn').addEventListener('click', () => {
+            this.canvas.displayOptions.showNames = !this.canvas.displayOptions.showNames;
+            document.getElementById('toggleNamesBtn').classList.toggle('active', this.canvas.displayOptions.showNames);
+            this.canvas.draw();
+        });
+        // 名称フォント色カラーピッカー
+        const nameFontColorPicker = document.getElementById('nameFontColorPicker');
+        nameFontColorPicker.value = this.canvas.nameFontColor;
+        nameFontColorPicker.addEventListener('input', (e) => {
+            this.canvas.nameFontColor = e.target.value;
+            this.canvas.draw();
+        });
         
         // キャンバスサイズ変更ボタンを追加
         const visibilityBtn = document.getElementById('visibility');
@@ -450,7 +463,8 @@ class App {
             { id: 'toggleGridBtn', method: 'toggleGrid' },
             { id: 'toggleEndpointsBtn', method: 'toggleEndpoints' },
             { id: 'toggleConnectionsBtn', method: 'toggleConnections' },
-            { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' }
+            { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' },
+            { id: 'toggleNamesBtn', method: 'toggleNames' }
         ];
         toggleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);
@@ -1002,18 +1016,19 @@ class App {
         const toggleEndpointsBtn = document.getElementById('toggleEndpointsBtn');
         const toggleConnectionsBtn = document.getElementById('toggleConnectionsBtn');
         const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
-        // 接続モード時は接続関連のボタンを強制的にアクティブにする
+        const toggleNamesBtn = document.getElementById('toggleNamesBtn');
         if (this.drawMode === 'connect') {
             toggleEndpointsBtn.classList.add('active');
             toggleConnectionsBtn.classList.add('active');
             toggleLabelsBtn.classList.add('active');
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
+            toggleNamesBtn.classList.toggle('active', this.canvas.displayOptions.showNames);
         } else {
-            // ON（表示中）ならactive、OFFなら非active
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
             toggleEndpointsBtn.classList.toggle('active', this.canvas.displayOptions.showEndpoints);
             toggleConnectionsBtn.classList.toggle('active', this.canvas.displayOptions.showConnections);
             toggleLabelsBtn.classList.toggle('active', this.canvas.displayOptions.showConnectionLabels);
+            toggleNamesBtn.classList.toggle('active', this.canvas.displayOptions.showNames);
         }
     }
 
@@ -3740,7 +3755,8 @@ class App {
             { id: 'toggleGridBtn', method: 'toggleGrid' },
             { id: 'toggleEndpointsBtn', method: 'toggleEndpoints' },
             { id: 'toggleConnectionsBtn', method: 'toggleConnections' },
-            { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' }
+            { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' },
+            { id: 'toggleNamesBtn', method: 'toggleNames' }
         ];
         toggleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);
