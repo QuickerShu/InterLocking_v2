@@ -38,26 +38,48 @@ class Route {
     }
 
     static fromJSON(json) {
-        // 許可ペア
-        const validPairs = [
-            [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
-        ];
-        // pointsをフィルタ
-        const filteredPoints = (json.points || []).filter(pt => {
-            if ((pt.type === 'double_cross' || pt.type === 'double_slip_x') && typeof pt.fromEpIdx === 'number' && typeof pt.toEpIdx === 'number') {
-                return validPairs.some(([a,b]) => a === pt.fromEpIdx && b === pt.toEpIdx);
-            }
-            return true;
-        });
-        const route = new Route(
-            json.name,
-            json.lever,
-            json.destination,
-            filteredPoints,
-            json.isAuto
-        );
-        route.id = json.id;
-        return route;
+        // alert('fromJSON called');
+        // console.error('!!! fromJSON called !!!', json);
+        try {
+            // console.log('[fromJSON] 入力:', json);
+            // if (json && Array.isArray(json.points)) {
+            //     console.log('[fromJSON] points内容:', JSON.stringify(json.points, null, 2));
+            // } else {
+            //     console.log('[fromJSON] pointsが配列でない:', json ? json.points : json);
+            // }
+            // 許可ペア
+            const validPairs = [
+                [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+            ];
+            // pointsをフィルタ
+            const filteredPoints = (json.points || []).filter(pt => {
+                if ((pt.type === 'double_cross' || pt.type === 'double_slip_x') && typeof pt.fromEpIdx === 'number' && typeof pt.toEpIdx === 'number') {
+                    return validPairs.some(([a,b]) => a === pt.fromEpIdx && b === pt.toEpIdx);
+                }
+                return true;
+            });
+            // console.log('[fromJSON] filteredPoints:', JSON.stringify(filteredPoints, null, 2));
+            const route = new Route(
+                json.name,
+                json.lever,
+                json.destination,
+                filteredPoints,
+                json.isAuto
+            );
+            route.id = json.id;
+            // console.log('[fromJSON] 生成route:', route);
+            // console.log('[fromJSON] return前 route:', route);
+            return route;
+        } catch (e) {
+            // console.log('catch!');
+            // console.error('[Route.fromJSON例外]', e, json);
+            // if (json && Array.isArray(json.points)) {
+            //     console.log('[catch] points内容:', JSON.stringify(json.points, null, 2));
+            // } else {
+            //     console.log('[catch] pointsが配列でない:', json ? json.points : json);
+            // }
+            return null;
+        }
     }
 }
 
@@ -634,12 +656,15 @@ class RouteManager {
             route.name = name;
         }
         this.routes.set(route.id, route);
+        console.log('[addRoute後] this.routes:', Array.from(this.routes.values()));
     }
 
     /**
      * 登録済み進路一覧をUIに表示
      */
     updateRouteList() {
+        console.log('updateRouteList called');
+        console.log('routes:', Array.from(this.routes.values()));
         if (!this.routeList) return;
         this.routeList.innerHTML = '';
         const routes = Array.from(this.routes.values());
@@ -1080,6 +1105,8 @@ class RouteManager {
         // 例: if (this.routeList) this.routeList.innerHTML = '';
     }
 }
+
+window.Route = Route;
 
 
 

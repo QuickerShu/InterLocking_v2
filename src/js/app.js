@@ -3,6 +3,7 @@
  */
 class App {
     constructor(gridCanvasId, trackCanvasId) {
+        console.log('App constructor start');
         this.trackManager = new TrackManager();
         this.canvas = new Canvas(gridCanvasId, trackCanvasId, this.trackManager);
         this.toolbar = document.getElementById('toolbar');
@@ -73,10 +74,13 @@ class App {
 
         this.isInterlockingRepeatMode = false; // 連続配置モード
         this.interlockingNameFontColor = '#0074D9'; // 連動要素名称色（デフォルト青）
+        console.log('App constructor end');
+        console.log('exportLayoutBtn count:', document.querySelectorAll('#exportLayoutBtn').length);
     }
 
     // ツールバーの設定
     setupToolbar() {
+        console.log('setupToolbar called');
         // --- 配置ボタン（placeBtn）がなければ生成・挿入 ---
         let placeBtn = document.getElementById('placeBtn');
         if (!placeBtn) {
@@ -488,12 +492,23 @@ class App {
             { id: 'autoRouteBtn', method: () => { if (this.appMode !== 'edit') { this.setStatusInfo('編集モードに切り替えてください。'); return; } routeManager.generateAutoRoute(); } },
             { id: 'exportLayoutBtn', method: this.exportLayoutAsJson.bind(this) },
             { id: 'debugSaveBtn', method: this.saveDebugData.bind(this) },
-            { id: 'canvasSizeBtn', method: this.showCanvasSizeDialog.bind(this) }
+            { id: 'canvasSizeBtn', method: this.showCanvasSizeDialog.bind(this) },
+            { id: 'load', method: this.handleImportLayout.bind(this) }
         ];
         simpleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);
             if (el) {
-                el.addEventListener('click', btn.method);
+                if (btn.id === 'exportLayoutBtn') {
+                    // 多重バインド防止のため、クローンで完全リセット
+                    el.onclick = null;
+                    const newEl = el.cloneNode(true);
+                    el.parentNode.replaceChild(newEl, el);
+                    newEl.onclick = btn.method;
+                } else {
+                    // 他のボタンは従来通り
+                    el.onclick = null;
+                    el.onclick = btn.method;
+                }
             }
         });
         // 進路全消去ボタン
@@ -527,13 +542,11 @@ class App {
 
         // 表示切替ボタンのセットアップ
         this.setupToggleButtons();
-
-        // 進路・ファイル操作系ボタンのセットアップ
-        this.setupSimpleButtons();
     }
 
     // レイアウトデータをJSONでエクスポート
     exportLayoutAsJson() {
+        console.log('exportLayoutAsJson called');
         // tracksを配列化
         const tracksArray = Array.isArray(this.trackManager.tracks)
             ? this.trackManager.tracks
@@ -547,11 +560,32 @@ class App {
                 routesArray = window.routeManager.routes.map(r => r.toJSON ? r.toJSON() : r);
             }
         }
+        // バリデーション付きで出力
+        const safeTracks = tracksArray.map(track => {
+            const t = track.toJSON ? track.toJSON() : track;
+            // endpoints, x, yのバリデーション
+            if (!Array.isArray(t.endpoints) || t.endpoints.length === 0) t.endpoints = [{x:0, y:0},{x:20, y:0}];
+            if (typeof t.x !== 'number') t.x = t.endpoints[0]?.x ?? 0;
+            if (typeof t.y !== 'number') t.y = t.endpoints[0]?.y ?? 0;
+            return t;
+        });
+        const safeLevers = (this.interlockingManager.startLevers || []).map(lever => {
+            const pos = (typeof lever.x === 'number' && typeof lever.y === 'number') ? {x: lever.x, y: lever.y} : {x:0, y:0};
+            return { ...lever, position: pos };
+        });
+        const safeButtons = (this.interlockingManager.destinationButtons || []).map(button => {
+            const pos = (typeof button.x === 'number' && typeof button.y === 'number') ? {x: button.x, y: button.y} : {x:0, y:0};
+            return { ...button, position: pos };
+        });
+        const safeInsulations = (this.interlockingManager.trackInsulations || []).map(ins => {
+            const pos = (ins.position && typeof ins.position.x === 'number' && typeof ins.position.y === 'number') ? ins.position : {x:0, y:0};
+            return { ...ins, position: pos };
+        });
         const layoutData = {
-            tracks: tracksArray.map(track => track.toJSON ? track.toJSON() : track),
-            startLevers: this.interlockingManager.startLevers,
-            destinationButtons: this.interlockingManager.destinationButtons,
-            trackInsulations: this.interlockingManager.trackInsulations,
+            tracks: safeTracks,
+            startLevers: safeLevers,
+            destinationButtons: safeButtons,
+            trackInsulations: safeInsulations,
             routes: routesArray // 進路も追加
         };
         const json = JSON.stringify(layoutData, null, 2);
@@ -3603,6 +3637,7 @@ class App {
 
     // レイアウト読込ボタンのハンドラ
     handleImportLayout() {
+        console.log('window.Track:', window.Track);
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.json,application/json';
@@ -3616,11 +3651,27 @@ class App {
                     const data = JSON.parse(json);
                     // トラック
                     if (data.tracks && window.app.trackManager) {
-                        window.app.trackManager.tracks.clear && window.app.trackManager.tracks.clear();
-                        data.tracks.forEach(trackData => {
-                            const track = window.app.trackManager.constructor.Track ? window.app.trackManager.constructor.Track.fromJSON(trackData) : null;
-                            if (track) window.app.trackManager.tracks.set(track.id, track);
-                        });
+                        const tracks = window.app.trackManager.tracks;
+                        if (typeof tracks.clear === 'function') {
+                            tracks.clear();
+                            data.tracks.forEach(trackData => {
+                                console.log('trackData:', trackData);
+                                const track = window.Track ? window.Track.fromJSON(trackData) : null;
+                                console.log('fromJSON返り値:', track);
+                                if (track) tracks.set(track.id, track);
+                            });
+                            // デバッグ: 復元後のtracks内容を出力
+                            console.log('復元後のtracks:', Array.from(tracks.values()));
+                        } else if (Array.isArray(tracks)) {
+                            tracks.length = 0;
+                            data.tracks.forEach(trackData => {
+                                const track = window.Track ? window.Track.fromJSON(trackData) : null;
+                                console.log('fromJSON返り値:', track);
+                                if (track) tracks.push(track);
+                            });
+                            // デバッグ: 復元後のtracks内容を出力
+                            console.log('復元後のtracks:', tracks);
+                        }
                     }
                     // 連動要素
                     if (window.app.interlockingManager && typeof window.app.interlockingManager.importData === 'function') {
@@ -3628,10 +3679,36 @@ class App {
                     }
                     // 進路(routes)
                     if (data.routes && window.routeManager) {
+                        // --- 追加: 全Trackの状態をリセット ---
+                        const tracksArr = Array.isArray(window.app.trackManager.tracks)
+                            ? window.app.trackManager.tracks
+                            : Array.from(window.app.trackManager.tracks.values ? window.app.trackManager.tracks.values() : Object.values(window.app.trackManager.tracks));
+                        tracksArr.forEach(track => {
+                            track.status = 'normal';
+                            if (track.type === 'double_cross' || track.type === 'double_slip_x') {
+                                track.pointDirection = 'straight';
+                                if (typeof track.setPairStatus === 'function') {
+                                    const validPairs = [
+                                        [0,1],[1,0],[2,3],[3,2],[0,3],[3,0],[1,2],[2,1]
+                                    ];
+                                    validPairs.forEach(([a,b]) => track.setPairStatus(a, b, 'normal'));
+                                }
+                            } else if (track.isPoint) {
+                                track.pointDirection = 'normal';
+                            }
+                        });
+                        // --- ここまで追加 ---
                         window.routeManager.clearRoutes && window.routeManager.clearRoutes();
                         data.routes.forEach(routeData => {
-                            const route = window.routeManager.constructor.Route ? window.routeManager.constructor.Route.fromJSON(routeData) : null;
-                            if (route) window.routeManager.addRoute(route);
+                            // 読み込み時は必ずisActiveをfalseにする
+                            if (routeData && typeof routeData === 'object') {
+                                routeData.isActive = false;
+                            }
+                            const route = window.Route ? window.Route.fromJSON(routeData) : null;
+                            if (route) {
+                                route.isActive = false; // 念のためRouteインスタンス側も
+                                window.routeManager.addRoute(route);
+                            }
                         });
                         window.routeManager.updateRouteList && window.routeManager.updateRouteList();
                     }
@@ -3778,16 +3855,28 @@ class App {
 
     // 進路・ファイル操作系ボタンのセットアップ
     setupSimpleButtons() {
+        console.log('setupSimpleButtons called');
         const simpleButtons = [
             { id: 'autoRouteBtn', method: () => { if (this.appMode !== 'edit') { this.setStatusInfo('編集モードに切り替えてください。'); return; } routeManager.generateAutoRoute(); } },
             { id: 'exportLayoutBtn', method: this.exportLayoutAsJson.bind(this) },
             { id: 'debugSaveBtn', method: this.saveDebugData.bind(this) },
-            { id: 'canvasSizeBtn', method: this.showCanvasSizeDialog.bind(this) }
+            { id: 'canvasSizeBtn', method: this.showCanvasSizeDialog.bind(this) },
+            { id: 'load', method: this.handleImportLayout.bind(this) }
         ];
         simpleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);
             if (el) {
-                el.addEventListener('click', btn.method);
+                if (btn.id === 'exportLayoutBtn') {
+                    // 多重バインド防止のため、クローンで完全リセット
+                    el.onclick = null;
+                    const newEl = el.cloneNode(true);
+                    el.parentNode.replaceChild(newEl, el);
+                    newEl.onclick = btn.method;
+                } else {
+                    // 他のボタンは従来通り
+                    el.onclick = null;
+                    el.onclick = btn.method;
+                }
             }
         });
         // 進路全消去ボタン

@@ -290,11 +290,18 @@ class Track {
 
     // JSONに変換
     toJSON() {
+        // endpointsが空や不正な場合はデフォルト値
+        let endpoints = Array.isArray(this.endpoints) && this.endpoints.length > 0 ? this.endpoints : [{x:0, y:0}, {x:20, y:0}];
+        // x/yもendpoints[0]から取得
+        let x = (endpoints[0] && typeof endpoints[0].x === 'number') ? endpoints[0].x : 0;
+        let y = (endpoints[0] && typeof endpoints[0].y === 'number') ? endpoints[0].y : 0;
         return {
             id: this.id,
             type: this.type,
             name: this.name,
-            endpoints: this.endpoints,
+            endpoints: endpoints,
+            x: x,
+            y: y,
             connections: Array.from(this.connections.entries()),
             status: this.status,
             isPoint: this.isPoint,
@@ -308,8 +315,19 @@ class Track {
     // JSONから復元
     static fromJSON(data) {
         const track = new Track(data.id, data.type);
-        track.name = data.name || track.name; // 名前がない場合はデフォルト値を使用
-        track.endpoints = data.endpoints || [];
+        track.name = data.name || track.name;
+        // endpointsが配列で2点以上なければデフォルト値
+        if (Array.isArray(data.endpoints) && data.endpoints.length > 0) {
+            track.endpoints = data.endpoints;
+        } else {
+            // 最低限2点の直線をデフォルト
+            track.endpoints = [{x:0, y:0}, {x:20, y:0}];
+        }
+        // x/yが必要な場合はendpoints[0]から取得
+        if (track.endpoints[0]) {
+            track.x = track.endpoints[0].x;
+            track.y = track.endpoints[0].y;
+        }
         track.connections = new Map(data.connections || []);
         track.status = data.status || 'normal';
         track.isPoint = data.isPoint || false;

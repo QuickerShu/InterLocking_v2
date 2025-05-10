@@ -594,20 +594,20 @@ class InterlockingManager {
             startLevers: this.collections.lever.map(lever => ({
                 id: lever.id,
                 type: lever.type,
-                position: { x: lever.x, y: lever.y },
+                position: (typeof lever.x === 'number' && typeof lever.y === 'number') ? { x: lever.x, y: lever.y } : { x: 0, y: 0 },
                 trackId: lever.trackId,
                 routes: lever.routes?.map(route => route.id) || [],
                 endpointIndex: lever.endpointIndex
             })),
             destinationButtons: this.collections.button.map(button => ({
                 id: button.id,
-                position: { x: button.x, y: button.y },
+                position: (typeof button.x === 'number' && typeof button.y === 'number') ? { x: button.x, y: button.y } : { x: 0, y: 0 },
                 trackId: button.trackId,
                 routes: button.routes?.map(route => route.id) || []
             })),
             trackInsulations: this.collections.insulation.map(insulation => ({
                 id: insulation.id,
-                position: { ...insulation.position },
+                position: (insulation.position && typeof insulation.position.x === 'number' && typeof insulation.position.y === 'number') ? { ...insulation.position } : { x: 0, y: 0 },
                 type: insulation.type,
                 direction: insulation.direction,
                 trackSegments: [...(insulation.trackSegments || [])]
@@ -627,9 +627,10 @@ class InterlockingManager {
         // インポート
         if (data.trackInsulations && Array.isArray(data.trackInsulations)) {
             data.trackInsulations.forEach(item => {
+                const pos = (item.position && typeof item.position.x === 'number' && typeof item.position.y === 'number') ? item.position : {x:0, y:0};
                 const insulation = new TrackInsulation(
                     item.id,
-                    item.position,
+                    pos,
                     item.type,
                     item.direction
                 );
@@ -641,9 +642,10 @@ class InterlockingManager {
         }
         if (data.destinationButtons && Array.isArray(data.destinationButtons)) {
             data.destinationButtons.forEach(item => {
+                const pos = (item.position && typeof item.position.x === 'number' && typeof item.position.y === 'number') ? item.position : {x:0, y:0};
                 const button = new DestinationButton(
                     item.id,
-                    item.position,
+                    pos,
                     item.trackId
                 );
                 this.collections.button.push(button);
@@ -651,11 +653,12 @@ class InterlockingManager {
         }
         if (data.startLevers && Array.isArray(data.startLevers)) {
             data.startLevers.forEach(item => {
+                const pos = (item.position && typeof item.position.x === 'number' && typeof item.position.y === 'number') ? item.position : {x:0, y:0};
                 const lever = new StartLever(
                     item.id,
                     item.type,
-                    item.position.x,
-                    item.position.y,
+                    pos.x,
+                    pos.y,
                     item.trackId
                 );
                 lever.endpointIndex = (typeof item.endpointIndex === 'number') ? item.endpointIndex : 0;
