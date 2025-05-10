@@ -3,7 +3,7 @@
  */
 class App {
     constructor(gridCanvasId, trackCanvasId) {
-        console.log('App constructor start');
+        // 例: console.log('App constructor start');
         this.trackManager = new TrackManager();
         this.canvas = new Canvas(gridCanvasId, trackCanvasId, this.trackManager);
         this.toolbar = document.getElementById('toolbar');
@@ -74,13 +74,13 @@ class App {
 
         this.isInterlockingRepeatMode = false; // 連続配置モード
         this.interlockingNameFontColor = '#0074D9'; // 連動要素名称色（デフォルト青）
-        console.log('App constructor end');
-        console.log('exportLayoutBtn count:', document.querySelectorAll('#exportLayoutBtn').length);
+        // 例: console.log('App constructor end');
+        // 例: console.log('exportLayoutBtn count:', document.querySelectorAll('#exportLayoutBtn').length);
     }
 
     // ツールバーの設定
     setupToolbar() {
-        console.log('setupToolbar called');
+        // 例: console.log('setupToolbar called');
         // --- 配置ボタン（placeBtn）がなければ生成・挿入 ---
         let placeBtn = document.getElementById('placeBtn');
         if (!placeBtn) {
@@ -546,7 +546,7 @@ class App {
 
     // レイアウトデータをJSONでエクスポート
     exportLayoutAsJson() {
-        console.log('exportLayoutAsJson called');
+        // 例: console.log('exportLayoutAsJson called');
         // tracksを配列化
         const tracksArray = Array.isArray(this.trackManager.tracks)
             ? this.trackManager.tracks
@@ -1399,7 +1399,7 @@ class App {
                 // 仮パーツがなければ生成
                 if (!this._previewPlacingTrack) {
                     if (this.canvas.scale !== 1) {
-                        console.warn('[PREVIEW-INIT] scale!=1:', this.canvas.scale);
+                        // 例: console.warn('[PREVIEW-INIT] scale!=1:', this.canvas.scale);
                     } else {
                         // console.log('[PREVIEW-INIT] scale:', this.canvas.scale);
                     }
@@ -1851,6 +1851,40 @@ class App {
                     this.canvas.selectedEndpoint = null;
                     return;
                 }
+                // --- 分岐器・ダブルクロス・ダブルスリップのクリックで開通方向切替 ---
+                if (track && track.type && (track.type.startsWith('point_') || track.type === 'double_cross' || track.type === 'double_slip_x')) {
+                    if (track.type.startsWith('point_')) {
+                        const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                        this.trackManager.switchPoint(track.id, newDirection);
+                        this.setStatusInfo(`ポイントID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                    } else if (track.type === 'double_cross') {
+                        const newDirection = track.pointDirection === 'straight' ? 'cross' : 'straight';
+                        if (track.setCrossDirection) await track.setCrossDirection(newDirection);
+                        this.setStatusInfo(`ダブルクロスID:${track.id} を${newDirection === 'straight' ? '直進' : 'クロス'}に切り替えました`);
+                    } else if (track.type === 'double_slip_x') {
+                        const newDirection = track.pointDirection === 'normal' ? 'reverse' : 'normal';
+                        this.trackManager.switchPoint(track.id, newDirection);
+                        this.setStatusInfo(`ダブルスリップID:${track.id} を${newDirection === 'normal' ? '直進' : '分岐'}に切り替えました`);
+                    }
+                    // --- 進路の整合性チェックと解除 ---
+                    if (window.routeManager && window.routeManager.routes) {
+                        const activeRoutes = Array.from(window.routeManager.routes.values()).filter(r => r.isActive);
+                        activeRoutes.forEach(route => {
+                            if (typeof window.routeManager.isRouteSatisfied === 'function') {
+                                if (!window.routeManager.isRouteSatisfied(route)) {
+                                    window.routeManager.deactivateRoute(route.id);
+                                }
+                            } else if (typeof route.isSatisfied === 'function') {
+                                if (!route.isSatisfied()) {
+                                    window.routeManager.deactivateRoute(route.id);
+                                }
+                            }
+                        });
+                        if (typeof window.routeManager.updateRouteList === 'function') window.routeManager.updateRouteList();
+                    }
+                    this.canvas.draw();
+                    return;
+                }
                 // 連動要素以外は何もしない
                 this.canvas.selectedTrack = null;
                 this.canvas.selectedEndpoint = null;
@@ -2114,7 +2148,7 @@ class App {
     // アプリケーションモードの設定を更新
     setAppMode(mode) {
         if (mode !== 'edit' && mode !== 'operation') {
-            console.error('無効なモード:', mode);
+            // 例: console.error('無効なモード:', mode);
             return;
         }
         
@@ -3679,7 +3713,7 @@ class App {
 
     // レイアウト読込ボタンのハンドラ
     handleImportLayout() {
-        console.log('window.Track:', window.Track);
+        // 例: console.log('window.Track:', window.Track);
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.json,application/json';
@@ -3697,9 +3731,9 @@ class App {
                         if (typeof tracks.clear === 'function') {
                             tracks.clear();
                             data.tracks.forEach(trackData => {
-                                console.log('trackData:', trackData);
+                                // 例: console.log('trackData:', trackData);
                                 const track = window.Track ? window.Track.fromJSON(trackData) : null;
-                                console.log('fromJSON返り値:', track);
+                                // 例: console.log('fromJSON返り値:', track);
                                 if (track) tracks.set(track.id, track);
                             });
                             // デバッグ: 復元後のtracks内容を出力

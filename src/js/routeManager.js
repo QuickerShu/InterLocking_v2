@@ -81,6 +81,32 @@ class Route {
             return null;
         }
     }
+
+    isSatisfied() {
+        // 進路上の各trackの分岐方向や状態が現在の線路状態と一致しているか判定
+        if (!window.app || !window.app.trackManager) return false;
+        const tracks = window.app.trackManager.tracks;
+        for (const step of this.points || []) {
+            let track = null;
+            if (typeof tracks.get === 'function') {
+                track = tracks.get(step.trackId) || tracks.get(Number(step.trackId));
+            } else if (typeof tracks === 'object') {
+                track = tracks[step.trackId] || tracks[Number(step.trackId)];
+            } else if (Array.isArray(tracks)) {
+                track = tracks.find(t => String(t.id) === String(step.trackId));
+            }
+            if (!track) return false;
+            // 分岐器・ダブルクロス・ダブルスリップはdirectionも比較
+            if (track.isPoint || track.type === 'double_cross' || track.type === 'double_slip_x') {
+                // step.directionが指定されていれば比較
+                if (step.direction && track.pointDirection && step.direction !== track.pointDirection) {
+                    return false;
+                }
+            }
+            // 他にも必要な整合性判定があればここに追加
+        }
+        return true;
+    }
 }
 
 // 経路探索用のグラフノードクラスを追加
