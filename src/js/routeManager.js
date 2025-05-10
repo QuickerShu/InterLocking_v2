@@ -952,6 +952,7 @@ class RouteManager {
             console.log('[DEBUG][activateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
         }
         // --- ここまで追加 ---
+        if (typeof this.updateRouteList === 'function') this.updateRouteList();
     }
 
     /**
@@ -1081,6 +1082,7 @@ class RouteManager {
             console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
         }
         // --- ここまで追加 ---
+        if (typeof this.updateRouteList === 'function') this.updateRouteList();
     }
 
     /**

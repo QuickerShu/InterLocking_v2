@@ -2152,12 +2152,12 @@ class App {
             document.getElementById('cursorBtn').classList.add('active');
             // ここでデフォルトのてこ・着点ボタンを自動追加（不要なので削除）
             // this.interlockingManager.ensureDefaultLeversAndButtons();
-            // 選択対象をtrackに固定し、ラジオボタンもtrack側をcheckedにする
-            this.selectionTarget = 'track';
+            // --- 選択対象をelementに固定し、ラジオボタンもelement側をcheckedにする ---
+            this.selectionTarget = 'element';
             const selectTrackRadio = document.getElementById('selectTrackRadio');
             const selectElementRadio = document.getElementById('selectElementRadio');
-            if (selectTrackRadio) selectTrackRadio.checked = true;
-            if (selectElementRadio) selectElementRadio.checked = false;
+            if (selectTrackRadio) selectTrackRadio.checked = false;
+            if (selectElementRadio) selectElementRadio.checked = true;
             // 選択状態をリセット
             this.canvas.selectedTrack = null;
             this.canvas.selectedEndpoint = null;
@@ -3756,6 +3756,17 @@ class App {
                     }
                     window.app.canvas.draw && window.app.canvas.draw();
                     window.app.setStatusInfo('レイアウトデータを読み込みました');
+                    // --- 追加: 編集モードに切り替え ---
+                    if (typeof window.app.setAppMode === 'function') {
+                        window.app.setAppMode('edit');
+                    }
+                    // モードボタンのactiveクラス付け替え
+                    const editBtn = document.getElementById('editModeBtn');
+                    const opBtn = document.getElementById('operationModeBtn');
+                    if (editBtn && opBtn) {
+                        editBtn.classList.add('active');
+                        opBtn.classList.remove('active');
+                    }
                 } catch (err) {
                     alert('レイアウトデータの読み込みに失敗しました: ' + err.message);
                 }
