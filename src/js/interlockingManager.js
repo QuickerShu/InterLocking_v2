@@ -591,19 +591,22 @@ class InterlockingManager {
             startLevers: this.collections.lever.map(lever => ({
                 id: lever.id,
                 type: lever.type,
-                position: (typeof lever.x === 'number' && typeof lever.y === 'number') ? { x: lever.x, y: lever.y } : { x: 0, y: 0 },
+                name: lever.name,
+                position: { x: lever.x, y: lever.y },
                 trackId: lever.trackId,
-                routes: lever.routes?.map(route => route.id) || [],
-                endpointIndex: lever.endpointIndex
+                endpointIndex: lever.endpointIndex,
+                routes: lever.routes?.map(route => route.id) || []
             })),
             destinationButtons: this.collections.button.map(button => ({
                 id: button.id,
+                name: button.name,
                 position: (typeof button.x === 'number' && typeof button.y === 'number') ? { x: button.x, y: button.y } : { x: 0, y: 0 },
                 trackId: button.trackId,
                 routes: button.routes?.map(route => route.id) || []
             })),
             trackInsulations: this.collections.insulation.map(insulation => ({
                 id: insulation.id,
+                name: insulation.name,
                 position: (insulation.position && typeof insulation.position.x === 'number' && typeof insulation.position.y === 'number') ? { ...insulation.position } : { x: 0, y: 0 },
                 type: insulation.type,
                 direction: insulation.direction,
@@ -631,6 +634,7 @@ class InterlockingManager {
                     item.type,
                     item.direction
                 );
+                if (item.name) insulation.name = item.name;
                 if (item.trackSegments && Array.isArray(item.trackSegments)) {
                     insulation.trackSegments = [...item.trackSegments];
                 }
@@ -645,6 +649,7 @@ class InterlockingManager {
                     pos,
                     item.trackId
                 );
+                if (item.name) button.name = item.name;
                 this.collections.button.push(button);
             });
         }
@@ -658,6 +663,7 @@ class InterlockingManager {
                     pos.y,
                     item.trackId
                 );
+                if (item.name) lever.name = item.name;
                 lever.endpointIndex = (typeof item.endpointIndex === 'number') ? item.endpointIndex : 0;
                 this.collections.lever.push(lever);
             });
@@ -849,7 +855,7 @@ class InterlockingManager {
             if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
             return existing;
         }
-        const name = `${window.app.getLeverTypeName(type)}${this.counters[type]}`;
+        const name = options.name || `${window.app.getLeverTypeName(type)}${this.counters[type]}`;
         const lever = new StartLever(id, type, options.x, options.y, options.trackId, this.counters[type]);
         lever.name = name;
         lever.endpointIndex = options.endpointIndex;
@@ -873,7 +879,7 @@ class InterlockingManager {
             if (options.endpointIndex !== undefined) existing.endpointIndex = options.endpointIndex;
             return existing;
         }
-        const name = `着点ボタン${this.counters.destButton}`;
+        const name = options.name || `着点ボタン${this.counters.destButton}`;
         const button = new DestinationButton(id, {x: options.x, y: options.y}, options.trackId, this.counters.destButton);
         button.name = name;
         button.endpointIndex = options.endpointIndex;
@@ -895,31 +901,11 @@ class InterlockingManager {
         if (existing) {
             return existing;
         }
-        const name = `線路絶縁${this.counters.insulation}`;
+        const name = options.name || `線路絶縁${this.counters.insulation}`;
         const insulation = new TrackInsulation(id, options.position, options.type, options.direction);
         insulation.name = name;
         this.counters.insulation++;
         return insulation;
-    }
-
-    // 共通コレクション操作
-    _findElement(type, id) {
-        return this.collections[type]?.find(e => e.id === id) || null;
-    }
-    _addElement(type, element) {
-        if (!this.collections[type]) this.collections[type] = [];
-        this.collections[type].push(element);
-    }
-    _removeElement(type, id) {
-        const col = this.collections[type];
-        if (!col) return false;
-        const idx = col.findIndex(e => e.id === id);
-        if (idx !== -1) {
-            col.splice(idx, 1);
-            this.canvas.draw();
-            return true;
-        }
-        return false;
     }
 
     /**
@@ -948,150 +934,13 @@ class InterlockingManager {
     }
 
     /**
-     * 状態管理の初期化
-     */
-    _initStates() {
-        this.routeSelectionState = {
-            isSelectingRoute: false,
-            selectedLever: null,
-            selectableButtons: []
-        };
-        this.editModeState = {
-            selectedElement: null,
-            isDragging: false,
-            lastMouseX: 0,
-            lastMouseY: 0,
-            elementType: null
-        };
-    }
-
-    /**
-     * 状態リセット
-     */
-    resetStates() {
-        this._initStates();
-        this.resetCounters();
-    }
-
-    /**
-     * コレクションからIDで要素を検索
+     * コレクションに要素を追加
      * @param {string} type
-     * @param {string} id
-     * @returns {object|null}
-     */
-    findById(type, id) {
-        return this.collections[type]?.find(e => e.id === id) || null;
-    }
-
-    /**
-     * コレクションからIDで要素を削除
-     * @param {string} type
-     * @param {string} id
-     * @returns {boolean}
-     */
-    removeById(type, id) {
-        const col = this.collections[type];
-        if (!col) return false;
-        const idx = col.findIndex(e => e.id === id);
-        if (idx !== -1) {
-            col.splice(idx, 1);
-            this.canvas.draw();
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * コレクションの全要素に対して処理を実行
-     * @param {string} type
-     * @param {function} callback
-     */
-    forEach(type, callback) {
-        if (this.collections[type]) {
-            this.collections[type].forEach(callback);
-        }
-    }
-
-    /**
-     * コレクションの要素を条件で抽出
-     * @param {string} type
-     * @param {function} predicate
-     * @returns {Array}
-     */
-    filter(type, predicate) {
-        return this.collections[type]?.filter(predicate) || [];
-    }
-
-    /**
-     * UI上の選択状態をクリア
-     */
-    clearSelection() {
-        this.editModeState.selectedElement = null;
-        this.editModeState.elementType = null;
-        this.editModeState.isDragging = false;
-        this.canvas.draw();
-    }
-
-    /**
-     * 要素の選択状態をセット
      * @param {object} element
-     * @param {string} type
-     * @param {number} x
-     * @param {number} y
      */
-    setSelection(element, type, x, y) {
-        this.editModeState.selectedElement = element;
-        this.editModeState.elementType = type;
-        this.editModeState.isDragging = true;
-        this.editModeState.lastMouseX = x;
-        this.editModeState.lastMouseY = y;
-        this.canvas.draw();
-    }
-
-    /**
-     * 編集モード時の要素移動処理
-     * @param {number} x
-     * @param {number} y
-     */
-    moveSelectedElement(x, y) {
-        if (this.canvas.appMode === 'edit' && this.editModeState.isDragging && this.editModeState.selectedElement) {
-            const element = this.editModeState.selectedElement;
-            const dx = x - this.editModeState.lastMouseX;
-            const dy = y - this.editModeState.lastMouseY;
-            element.x += dx;
-            element.y += dy;
-            const snappedPos = this.canvas.snapToGrid({ x: element.x, y: element.y });
-            element.x = snappedPos.x;
-            element.y = snappedPos.y;
-            this.editModeState.lastMouseX = x;
-            this.editModeState.lastMouseY = y;
-            this.canvas.draw();
-        }
-    }
-
-    /**
-     * 編集モード時のドラッグ終了処理
-     */
-    endMoveSelectedElement() {
-        this.editModeState.isDragging = false;
-        this.editModeState.selectedElement = null;
-        this.editModeState.elementType = null;
-        this.canvas.draw();
-    }
-
-    /**
-     * 例外安全な要素追加
-     * @param {string} type
-     * @param {object} options
-     * @returns {object|null}
-     */
-    safeAddElement(type, options) {
-        try {
-            return this.addElement(type, options);
-        } catch (e) {
-            // console.error(`要素追加失敗: ${e.message}`);
-            return null;
-        }
+    _addElement(type, element) {
+        if (!this.collections[type]) this.collections[type] = [];
+        this.collections[type].push(element);
     }
 }
 
