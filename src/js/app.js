@@ -4058,11 +4058,15 @@ App.prototype.renderPointsModalList = function() {
         const item = document.createElement('div');
         item.className = 'point-item';
         item.style.marginBottom = '8px';
-        item.innerHTML = `
-            <div class="point-info">
-                <span class="point-label">${track.type === 'double_cross' ? 'ダブルクロス' : track.type === 'double_slip_x' ? 'ダブルスリップ' : `ポイント #${index + 1}`}</span>
-                <span class="point-address">アドレス: <input type="number" class="address-input" value="${address}" min="0" max="2044" style="width:60px;"></span>
-            </div>
+
+        // 名称ラベル
+        const nameLabel = document.createElement('span');
+        nameLabel.className = 'point-label';
+        nameLabel.textContent = `名称: ${track.name || ''}`;
+        item.appendChild(nameLabel);
+
+        item.innerHTML += `
+            <div class="point-address">アドレス: <input type="number" class="address-input" value="${address}" min="0" max="2044" style="width:60px;"></div>
             <div class="point-direction">
                 <div class="direction-indicator ${displayDirection === 'normal' ? 'direction-normal' : 'direction-reverse'}"></div>
                 <span>${displayDirection === 'normal' ? '直進' : '分岐'}${isInverted ? ' (DCC反転)' : ''}</span>
