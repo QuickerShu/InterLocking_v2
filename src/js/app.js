@@ -4124,3 +4124,27 @@ App.prototype.renderPointsModalList = function() {
 //     }
 // };
 // ... existing code ...
+
+function updateDSAirConnectionStatus() {
+    const statusText = document.getElementById('connection-status-text');
+    const statusDot = document.querySelector('.status-dot');
+    if (dsair.isConnected) {
+        statusText.textContent = 'DSAir: 接続中';
+        statusDot.classList.remove('status-disconnected');
+        statusDot.classList.add('status-connected');
+    } else {
+        statusText.textContent = 'DSAir: 未接続';
+        statusDot.classList.remove('status-connected');
+        statusDot.classList.add('status-disconnected');
+    }
+}
+
+// DSAir設定保存・接続テスト時に呼び出すため、windowにexport
+window.updateDSAirConnectionStatus = updateDSAirConnectionStatus;
+
+// 初期化時にも反映
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', updateDSAirConnectionStatus);
+} else {
+    updateDSAirConnectionStatus();
+}

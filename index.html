@@ -912,6 +912,8 @@
             <span id="connection-status-text">DSAir: 未接続</span>
         </div>
         <div id="status-info">準備完了</div>
+        <button id="dsairConnectBtn" style="margin-left:16px;min-width:100px;">DSAir接続OFF</button>
+        <button id="dsairPowerBtn" style="margin-left:16px;min-width:100px;">線路電源OFF</button>
     </div>
 
     <!-- 進路候補・登録済み進路モーダル -->
@@ -951,6 +953,24 @@
         </div>
     </div>
 
+    <!-- DSAir2設定モーダル -->
+    <div id="dsairConfigModal" class="modal">
+        <div class="modal-content" style="max-width:400px;min-width:300px;">
+            <h2 style="margin-top:0;">DSAir2接続設定</h2>
+            <div class="input-group">
+                <label for="dsairUrlInput">DSAir2のURLまたはIPアドレス</label>
+                <input type="text" id="dsairUrlInput" placeholder="例: http://192.168.1.41" style="width:100%;">
+            </div>
+            <div id="dsairConfigStatus" style="color:#F44336;margin-bottom:10px;display:none;"></div>
+            <div class="modal-buttons">
+                <button id="dsairTestConnectBtn">接続テスト</button>
+                <button id="dsairSaveConfigBtn">保存</button>
+                <button id="dsairCloseConfigBtn">閉じる</button>
+            </div>
+        </div>
+    </div>
+    <!-- /DSAir2設定モーダル -->
+
     <!-- JavaScriptファイル -->
     <script src="src/js/config.js"></script>
     <script src="src/js/dsair.js"></script>
@@ -961,5 +981,6 @@
     <script src="src/js/interlockingManager.js"></script>
     <script src="src/js/routeManager.js"></script>
     <script src="src/js/app.js"></script>
+    <script src="src/js/ui.js"></script>
 </body>
 </html>
