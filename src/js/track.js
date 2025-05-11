@@ -528,6 +528,13 @@ class TrackManager {
 
     // 新しい線路IDを生成
     generateTrackId() {
+        // 既存IDの最大値+1
+        let maxId = 0;
+        for (const id of this.tracks.keys()) {
+            const num = Number(id);
+            if (!isNaN(num) && num > maxId) maxId = num;
+        }
+        this.nextTrackId = Math.max(this.nextTrackId, maxId + 1);
         return this.nextTrackId++;
     }
 
@@ -600,22 +607,15 @@ class TrackManager {
 
     // JSON形式の配線略図データを読み込み
     importData(jsonData) {
-        try {
-            const data = JSON.parse(jsonData);
-            this.tracks.clear();
-            this.selectedTrack = null;
-            this.nextTrackId = data.nextTrackId;
-
-            for (const trackData of data.tracks) {
-                const track = Track.fromJSON(trackData);
-                this.tracks.set(track.id, track);
-            }
-
-            return true;
-        } catch (e) {
-            console.error('データのインポートに失敗しました:', e);
-            return false;
+        const result = origImportData.call(this, jsonData);
+        // 既存IDの最大値+1にnextTrackIdをセット
+        let maxId = 0;
+        for (const id of this.tracks.keys()) {
+            const num = Number(id);
+            if (!isNaN(num) && num > maxId) maxId = num;
         }
+        this.nextTrackId = maxId + 1;
+        return result;
     }
 
     /**
