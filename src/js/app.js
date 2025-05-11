@@ -161,29 +161,18 @@ class App {
             this.canvas.toggleConnectionLabels();
             document.getElementById('toggleLabelsBtn').classList.toggle('active');
         });
-        // 名称表示トグルボタン
-        document.getElementById('toggleNamesBtn').addEventListener('click', () => {
-            this.canvas.displayOptions.showNames = !this.canvas.displayOptions.showNames;
-            document.getElementById('toggleNamesBtn').classList.toggle('active', this.canvas.displayOptions.showNames);
+        // 線路名称表示トグルボタン
+        document.getElementById('toggleTrackNamesBtn').addEventListener('click', () => {
+            this.canvas.displayOptions.showTrackNames = !this.canvas.displayOptions.showTrackNames;
+            document.getElementById('toggleTrackNamesBtn').classList.toggle('active', this.canvas.displayOptions.showTrackNames);
             this.canvas.draw();
         });
-        // 名称フォント色カラーピッカー
-        const nameFontColorPicker = document.getElementById('nameFontColorPicker');
-        if (nameFontColorPicker) {
-            let color = nameFontColorPicker.value;
-            if (!color || color === 'undefined' || typeof color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-                color = '#222222';
-            }
-            nameFontColorPicker.value = color;
-        }
-        const interlockingNameFontColorPicker = document.getElementById('interlockingNameFontColorPicker');
-        if (interlockingNameFontColorPicker) {
-            let color = interlockingNameFontColorPicker.value;
-            if (!color || color === 'undefined' || typeof color !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
-                color = '#0074D9';
-            }
-            interlockingNameFontColorPicker.value = color;
-        }
+        // 連動要素名称表示トグルボタン
+        document.getElementById('toggleInterlockingNamesBtn').addEventListener('click', () => {
+            this.canvas.displayOptions.showInterlockingNames = !this.canvas.displayOptions.showInterlockingNames;
+            document.getElementById('toggleInterlockingNamesBtn').classList.toggle('active', this.canvas.displayOptions.showInterlockingNames);
+            this.canvas.draw();
+        });
         
         // キャンバスサイズ変更ボタンを追加
         const visibilityBtn = document.getElementById('visibility');
@@ -479,7 +468,8 @@ class App {
             { id: 'toggleEndpointsBtn', method: 'toggleEndpoints' },
             { id: 'toggleConnectionsBtn', method: 'toggleConnections' },
             { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' },
-            { id: 'toggleNamesBtn', method: 'toggleNames' }
+            { id: 'toggleTrackNamesBtn', method: 'toggleTrackNames' },
+            { id: 'toggleInterlockingNamesBtn', method: 'toggleInterlockingNames' }
         ];
         toggleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);
@@ -1061,19 +1051,22 @@ class App {
         const toggleEndpointsBtn = document.getElementById('toggleEndpointsBtn');
         const toggleConnectionsBtn = document.getElementById('toggleConnectionsBtn');
         const toggleLabelsBtn = document.getElementById('toggleLabelsBtn');
-        const toggleNamesBtn = document.getElementById('toggleNamesBtn');
+        const toggleTrackNamesBtn = document.getElementById('toggleTrackNamesBtn');
+        const toggleInterlockingNamesBtn = document.getElementById('toggleInterlockingNamesBtn');
         if (this.drawMode === 'connect') {
             toggleEndpointsBtn.classList.add('active');
             toggleConnectionsBtn.classList.add('active');
             toggleLabelsBtn.classList.add('active');
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
-            toggleNamesBtn.classList.toggle('active', this.canvas.displayOptions.showNames);
+            toggleTrackNamesBtn.classList.toggle('active', this.canvas.displayOptions.showTrackNames);
+            toggleInterlockingNamesBtn.classList.toggle('active', this.canvas.displayOptions.showInterlockingNames);
         } else {
             toggleGridBtn.classList.toggle('active', this.canvas.displayOptions.showGrid);
             toggleEndpointsBtn.classList.toggle('active', this.canvas.displayOptions.showEndpoints);
             toggleConnectionsBtn.classList.toggle('active', this.canvas.displayOptions.showConnections);
             toggleLabelsBtn.classList.toggle('active', this.canvas.displayOptions.showConnectionLabels);
-            toggleNamesBtn.classList.toggle('active', this.canvas.displayOptions.showNames);
+            toggleTrackNamesBtn.classList.toggle('active', this.canvas.displayOptions.showTrackNames);
+            toggleInterlockingNamesBtn.classList.toggle('active', this.canvas.displayOptions.showInterlockingNames);
         }
     }
 
@@ -3937,7 +3930,8 @@ class App {
             { id: 'toggleEndpointsBtn', method: 'toggleEndpoints' },
             { id: 'toggleConnectionsBtn', method: 'toggleConnections' },
             { id: 'toggleLabelsBtn', method: 'toggleConnectionLabels' },
-            { id: 'toggleNamesBtn', method: 'toggleNames' }
+            { id: 'toggleTrackNamesBtn', method: 'toggleTrackNames' },
+            { id: 'toggleInterlockingNamesBtn', method: 'toggleInterlockingNames' }
         ];
         toggleButtons.forEach(btn => {
             const el = document.getElementById(btn.id);

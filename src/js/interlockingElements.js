@@ -424,6 +424,7 @@ class TrackInsulation {
         this.type = type;            // タイプ
         this.direction = direction;  // 向き (度数)
         this.trackSegments = [];     // 隣接する線路セグメント情報
+        this.name = '絶縁' + (id ? String(id).slice(-4) : '');
     }
     
     /**
@@ -477,7 +478,7 @@ class TrackInsulation {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.globalAlpha = 0.85;
-            ctx.fillText(this.id || '', this.position?.x || 0, (this.position?.y || 0) + 12 / scale);
+            ctx.fillText(this.name || '', this.position?.x || 0, (this.position?.y || 0) + 12 / scale);
             ctx.restore();
         }
     }

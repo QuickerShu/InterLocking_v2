@@ -507,15 +507,15 @@ class InterlockingManager {
      * 要素の描画
      * @param {CanvasRenderingContext2D} ctx キャンバスコンテキスト
      */
-    draw(ctx, showNames = false) {
+    draw(ctx, showInterlockingNames = false) {
         // 線路絶縁の描画
         this.collections.insulation.forEach(insulation => {
-            insulation.draw(ctx, 1, showNames);
+            insulation.draw(ctx, 1, showInterlockingNames);
         });
         
         // 着点ボタンの描画
         this.collections.button.forEach(button => {
-            button.draw(ctx, 1, showNames);
+            button.draw(ctx, 1, showInterlockingNames);
         });
         
         // 発点てこの描画
@@ -551,24 +551,12 @@ class InterlockingManager {
                             // fromPt/toPtが両方取得でき、かつ座標が異なる場合のみ角度計算
                             if (fromPt && toPt && (fromPt.x !== toPt.x || fromPt.y !== toPt.y)) {
                                 angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x) + Math.PI / 4;
-                                // console.log('[LEVER-ANGLE-DEBUG]', {
-                                //     leverId: lever.id,
-                                //     leverTrackId: lever.trackId,
-                                //     leverEndpointIndex: lever.endpointIndex,
-                                //     fromPt,
-                                //     toPt,
-                                //     dx: toPt.x - fromPt.x,
-                                //     dy: toPt.y - fromPt.y,
-                                //     angleDeg: angle * 180 / Math.PI,
-                                //     routeId: route.id,
-                                //     step
-                                // });
                             }
                         }
                     }
                 }
             }
-            lever.draw(ctx, window.app.canvas.scale, angle, showNames);
+            lever.draw(ctx, window.app.canvas.scale, angle, showInterlockingNames);
         }
         
         // 選択中の要素のハイライト
