@@ -176,7 +176,7 @@ class InterlockingManager {
     _handleDeleteModeClick(x, y) {
         // x, y の妥当性チェック
         if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-            console.warn('削除モード: 無効な座標(x, y)が指定されました', x, y);
+            // console.warn('削除モード: 無効な座標(x, y)が指定されました', x, y);
             return;
         }
         // 連動要素（てこや着点ボタン、絶縁）の位置判定と削除
@@ -202,7 +202,7 @@ class InterlockingManager {
     _handleSelectModeClick(x, y) {
         // x, y の妥当性チェック
         if (typeof x !== 'number' || typeof y !== 'number' || !isFinite(x) || !isFinite(y)) {
-            console.warn('選択モード: 無効な座標(x, y)が指定されました', x, y);
+            // console.warn('選択モード: 無効な座標(x, y)が指定されました', x, y);
             return;
         }
         // 連動要素の選択
@@ -551,18 +551,18 @@ class InterlockingManager {
                             // fromPt/toPtが両方取得でき、かつ座標が異なる場合のみ角度計算
                             if (fromPt && toPt && (fromPt.x !== toPt.x || fromPt.y !== toPt.y)) {
                                 angle = Math.atan2(toPt.y - fromPt.y, toPt.x - fromPt.x) + Math.PI / 4;
-                                console.log('[LEVER-ANGLE-DEBUG]', {
-                                    leverId: lever.id,
-                                    leverTrackId: lever.trackId,
-                                    leverEndpointIndex: lever.endpointIndex,
-                                    fromPt,
-                                    toPt,
-                                    dx: toPt.x - fromPt.x,
-                                    dy: toPt.y - fromPt.y,
-                                    angleDeg: angle * 180 / Math.PI,
-                                    routeId: route.id,
-                                    step
-                                });
+                                // console.log('[LEVER-ANGLE-DEBUG]', {
+                                //     leverId: lever.id,
+                                //     leverTrackId: lever.trackId,
+                                //     leverEndpointIndex: lever.endpointIndex,
+                                //     fromPt,
+                                //     toPt,
+                                //     dx: toPt.x - fromPt.x,
+                                //     dy: toPt.y - fromPt.y,
+                                //     angleDeg: angle * 180 / Math.PI,
+                                //     routeId: route.id,
+                                //     step
+                                // });
                             }
                         }
                     }
@@ -714,7 +714,7 @@ class InterlockingManager {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            this.canvas.setStatusInfo(`発点てこ ${id} を削除しました`);
+            // console.log(`発点てこ ${id} を削除しました`);
         }
     }
     
@@ -728,7 +728,7 @@ class InterlockingManager {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            this.canvas.setStatusInfo(`着点ボタン ${id} を削除しました`);
+            // console.log(`着点ボタン ${id} を削除しました`);
         }
     }
     
@@ -742,7 +742,7 @@ class InterlockingManager {
                 this.editModeState.selectedElement = null;
                 this.editModeState.elementType = null;
             }
-            this.canvas.setStatusInfo(`線路絶縁 ${id} を削除しました`);
+            // console.log(`線路絶縁 ${id} を削除しました`);
         }
     }
 
@@ -1101,7 +1101,7 @@ class InterlockingManager {
         try {
             return this.addElement(type, options);
         } catch (e) {
-            console.error(`要素追加失敗: ${e.message}`);
+            // console.error(`要素追加失敗: ${e.message}`);
             return null;
         }
     }
