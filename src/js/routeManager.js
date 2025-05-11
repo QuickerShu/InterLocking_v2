@@ -216,9 +216,9 @@ class RouteManager {
                 reverseConnection
             };
         });
-        console.log('trackElementsForGraph:', trackElementsForGraph);
+        // console.log('trackElementsForGraph:', trackElementsForGraph);
         trackElementsForGraph.forEach((t, i) => {
-            console.log(`track ${i}:`, t);
+            // console.log(`track ${i}:`, t);
         });
         // this.buildTrackGraph(trackElementsForGraph); ←この行を削除
         // 端点indexを求める関数（connections優先）
@@ -237,8 +237,8 @@ class RouteManager {
         }
 
         // デバッグ: levers/destButtonsのendpointIndexを出力
-        console.log('levers:', this.interlockingManager.startLevers.map(l => ({id: l.id, trackId: l.trackId, endpointIndex: l.endpointIndex})));
-        console.log('destButtons:', this.interlockingManager.destinationButtons.map(b => ({id: b.id, trackId: b.trackId, endpointIndex: b.endpointIndex})));
+        // console.log('levers:', this.interlockingManager.startLevers.map(l => ({id: l.id, trackId: l.trackId, endpointIndex: l.endpointIndex})));
+        // console.log('destButtons:', this.interlockingManager.destinationButtons.map(b => ({id: b.id, trackId: b.trackId, endpointIndex: b.endpointIndex})));
 
         // てこ・着点ボタンの全組み合わせで候補生成
         const levers = (this.interlockingManager.startLevers || []).map(l => ({
@@ -258,18 +258,18 @@ class RouteManager {
             x: b.x,
             y: b.y
         }));
-        console.log('--- 進路自動生成');
-        console.log('levers:', levers);
-        console.log('destButtons:', destButtons);
+        // console.log('--- 進路自動生成');
+        // console.log('levers:', levers);
+        // console.log('destButtons:', destButtons);
         let allCandidates = [];
         levers.forEach(lever => {
             const leverTrack = trackElementsForGraph.find(t => t.id == lever.trackId);
             if (!leverTrack) {
-                console.log('[AUTO:SKIP] leverTrackが見つからない:', lever);
+                // console.log('[AUTO:SKIP] leverTrackが見つからない:', lever);
                 return;
             }
             if (!Array.isArray(leverTrack.endpoints) || leverTrack.endpoints.length !== 2) {
-                console.log('[AUTO:SKIP] leverTrackが2端点でない:', leverTrack);
+                // console.log('[AUTO:SKIP] leverTrackが2端点でない:', leverTrack);
                 return;
             }
             // endpointIndexがnullなら両端点を探索
@@ -277,17 +277,17 @@ class RouteManager {
             destButtons.forEach(dest => {
                 const destTrack = trackElementsForGraph.find(t => t.id == dest.trackId);
                 if (!destTrack) {
-                    console.log('[AUTO:SKIP] destTrackが見つからない:', dest);
+                    // console.log('[AUTO:SKIP] destTrackが見つからない:', dest);
                     return;
                 }
                 if (!Array.isArray(destTrack.endpoints) || destTrack.endpoints.length !== 2) {
-                    console.log('[AUTO:SKIP] destTrackが2端点でない:', destTrack);
+                    // console.log('[AUTO:SKIP] destTrackが2端点でない:', destTrack);
                     return;
                 }
                 const destEpIdxs = (typeof dest.endpointIndex === 'number') ? [dest.endpointIndex] : [0, 1];
                 leverEpIdxs.forEach(leverEpIdx => {
                     destEpIdxs.forEach(destEpIdx => {
-                        console.log('[AUTO:COMBO]', { lever, dest, leverEpIdx, destEpIdx });
+                        // console.log('[AUTO:COMBO]', { lever, dest, leverEpIdx, destEpIdx });
                         const candidates = this._findAllRoutesFromEndpoint(
                             leverTrack, leverEpIdx, dest, destEpIdx
                         ) || [];
@@ -308,7 +308,7 @@ class RouteManager {
             });
         });
         allCandidates = allCandidates || [];
-        console.log('allCandidates.length:', allCandidates.length);
+        // console.log('allCandidates.length:', allCandidates.length);
 
         // lever.trackIdとdestination.trackIdが一致する進路候補は除外
         allCandidates = allCandidates.filter(cand => {
@@ -364,7 +364,7 @@ class RouteManager {
             countDiv.textContent = `経路候補数: ${(allCandidates || []).length}`;
             panel.appendChild(countDiv);
             // --- 追加: UI候補リスト内容をデバッグ出力 ---
-            console.log('UI候補リスト:', allCandidates.map(r => r.toJSON ? r.toJSON() : r));
+            // console.log('UI候補リスト:', allCandidates.map(r => r.toJSON ? r.toJSON() : r));
             (allCandidates || []).forEach((cand, idx) => {
                 if (!cand) return;
                 const leverName = cand.lever?.name || cand.lever?.id || '';
@@ -442,9 +442,9 @@ class RouteManager {
 
         // 追加: 候補として残った経路の繋がりをデバッグログで出力
         allCandidates.forEach((candidate, idx) => {
-            console.debug(`[経路候補${idx+1}]`);
+            // console.debug(`[経路候補${idx+1}]`);
             (candidate.path || []).forEach((step, stepIdx) => {
-                console.debug(`  step${stepIdx}: trackId=${step.trackId}, fromEpIdx=${step.fromEpIdx}, toEpIdx=${step.toEpIdx}, type=${step.type}, direction=${step.direction}`);
+                // console.debug(`  step${stepIdx}: trackId=${step.trackId}, fromEpIdx=${step.fromEpIdx}, toEpIdx=${step.toEpIdx}, type=${step.type}, direction=${step.direction}`);
             });
         });
     }
@@ -484,7 +484,7 @@ class RouteManager {
             const node = queue.shift();
             let skipped = false; // 追加: スキップ理由記録用
             // 探索状況を出力
-            console.debug(`[探索状況] 現在: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'));
+            // console.debug(`[探索状況] 現在: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'));
             if (String(node.track.id) === String(dest.trackId) && node.epIdx === destEpIdx) {
                 results.push({ path: node.path });
                 continue;
@@ -498,17 +498,17 @@ class RouteManager {
                 const stepKey = `${node.track.id}:${node.epIdx}:${nextEpIdx}`;
                 // track内移動で通過したtrackIdの再通過禁止
                 if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
-                    console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（track内移動再通過禁止）`);
+                    // console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（track内移動再通過禁止）`);
                     skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
                     continue;
                 }
                 if (node.visitedSteps.has(stepKey)) {
-                    console.debug(`[SKIP:visitedSteps] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（端点ペア再通過禁止）`);
+                    // console.debug(`[SKIP:visitedSteps] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（端点ペア再通過禁止）`);
                     skipped = `[SKIP:visitedSteps] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}`;
                     continue;
                 }
                 if (node.visitedTrackInternalMove && node.visitedTrackInternalMove.has(node.track.id)) {
-                    console.debug(`[SKIP:visitedTrackInternalMove] trackId=${node.track.id}（track内移動1回制限）`);
+                    // console.debug(`[SKIP:visitedTrackInternalMove] trackId=${node.track.id}（track内移動1回制限）`);
                     skipped = `[SKIP:visitedTrackInternalMove] trackId=${node.track.id}`;
                     continue;
                 }
@@ -522,12 +522,12 @@ class RouteManager {
                     if (!isValid) continue;
                     const stepKey = `${node.track.id}:${node.epIdx}:${nextEpIdx}`;
                     if (node.visitedSteps.has(stepKey)) {
-                        console.debug(`[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（多端点track端点ペア再通過禁止）`);
+                        // console.debug(`[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}（多端点track端点ペア再通過禁止）`);
                         skipped = `[SKIP:visitedSteps(double_cross)] trackId=${node.track.id} from=${node.epIdx} to=${nextEpIdx}`;
                         continue;
                     }
                     if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
-                        console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（多端点trackId再通過禁止）`);
+                        // console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（多端点trackId再通過禁止）`);
                         skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
                         continue;
                     }
@@ -540,7 +540,7 @@ class RouteManager {
                         }
                     }
                     if (node.visitedTrackIdsInternalMove && node.visitedTrackIdsInternalMove.has(node.track.id)) {
-                        console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（2端点trackId再通過禁止）`);
+                        // console.debug(`[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}（2端点trackId再通過禁止）`);
                         skipped = `[SKIP:visitedTrackIdsInternalMove] trackId=${node.track.id}`;
                         continue;
                     }
@@ -588,7 +588,7 @@ class RouteManager {
                     visitedTrackInternalMove: newVisitedTrackInternalMove
                 });
                 // 追加: track内移動の進み先を出力
-                console.debug(`[探索状況] track内移動: trackId=${node.track.id}, fromEpIdx=${node.epIdx} → toEpIdx=${nextEpIdx}`);
+                // console.debug(`[探索状況] track内移動: trackId=${node.track.id}, fromEpIdx=${node.epIdx} → toEpIdx=${nextEpIdx}`);
                 anyTrackMove = true;
             }
             let connectionsArr = Array.isArray(node.track.connections) ? node.track.connections : Array.from(node.track.connections);
@@ -607,7 +607,7 @@ class RouteManager {
                 }
                 // track間移動で入ったtrackIdの再入場禁止
                 if (node.visitedTrackIdsByConnection && node.visitedTrackIdsByConnection.has(nextTrack.id)) {
-                    console.debug(`[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}（track間移動再入場禁止）`);
+                    // console.debug(`[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}（track間移動再入場禁止）`);
                     skipped = `[SKIP:visitedTrackIdsByConnection] nextTrackId=${nextTrack.id}`;
                     continue;
                 }
@@ -647,12 +647,12 @@ class RouteManager {
                     visitedTrackInternalMove: new Set(node.visitedTrackInternalMove)
                 });
                 // 追加: track間移動の進み先を出力
-                console.debug(`[探索状況] track間移動: fromTrackId=${node.track.id}, fromEpIdx=${node.epIdx} → toTrackId=${nextTrack.id}, toEpIdx=${conn.endpointIndex}`);
+                // console.debug(`[探索状況] track間移動: fromTrackId=${node.track.id}, fromEpIdx=${node.epIdx} → toTrackId=${nextTrack.id}, toEpIdx=${conn.endpointIndex}`);
                 anyConnectionMove = true;
             }
             // 追加: このnodeからtrack内・track間ともに進めなかった場合、途絶情報を出力
             if (!anyTrackMove && !anyConnectionMove) {
-                console.debug(`[DEADEND] 経路途絶: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'), skipped ? `最後のスキップ理由: ${skipped}` : '');
+                // console.debug(`[DEADEND] 経路途絶: trackId=${node.track.id}, epIdx=${node.epIdx}, path=`, node.path.map(s => `${s.trackId}(${s.fromEpIdx}->${s.toEpIdx})`).join('→'), skipped ? `最後のスキップ理由: ${skipped}` : '');
             }
         }
         return results;
@@ -682,15 +682,15 @@ class RouteManager {
             route.name = name;
         }
         this.routes.set(route.id, route);
-        console.log('[addRoute後] this.routes:', Array.from(this.routes.values()));
+        // console.log('[addRoute後] this.routes:', Array.from(this.routes.values()));
     }
 
     /**
      * 登録済み進路一覧をUIに表示
      */
     updateRouteList() {
-        console.log('updateRouteList called');
-        console.log('routes:', Array.from(this.routes.values()));
+        // console.log('updateRouteList called');
+        // console.log('routes:', Array.from(this.routes.values()));
         if (!this.routeList) return;
         this.routeList.innerHTML = '';
         const routes = Array.from(this.routes.values());
@@ -797,18 +797,18 @@ class RouteManager {
         const route = this.routes.get(routeId);
         if (!route) return;
         // --- 追加: 進路開通デバッグログ ---
-        console.log('[DEBUG][activateRoute] 開通する進路:', {
-            routeId: route.id,
-            name: route.name,
-            points: (route.points || []).map((step, idx) => ({
-                idx,
-                trackId: step.trackId,
-                fromEpIdx: step.fromEpIdx,
-                toEpIdx: step.toEpIdx,
-                type: step.type,
-                direction: step.direction
-            }))
-        });
+        // console.log('[DEBUG][activateRoute] 開通する進路:', {
+        //     routeId: route.id,
+        //     name: route.name,
+        //     points: (route.points || []).map((step, idx) => ({
+        //         idx,
+        //         trackId: step.trackId,
+        //         fromEpIdx: step.fromEpIdx,
+        //         toEpIdx: step.toEpIdx,
+        //         type: step.type,
+        //         direction: step.direction
+        //     }))
+        // });
         // --- 支障チェック ---
         // 1. 今開通中の進路一覧
         const activeRoutes = Array.from(this.routes.values()).filter(r => r !== route && r.isActive);
@@ -852,9 +852,9 @@ class RouteManager {
         }
         // デバッグ: てこtrackId, 経路stepのtrackId一覧
         const leverTrackId = route.lever?.trackId;
-        console.log('[DEBUG] てこtrackId:', leverTrackId);
+        // console.log('[DEBUG] てこtrackId:', leverTrackId);
         const stepTrackIds = (route.points || []).map(s => s.trackId);
-        console.log('[DEBUG] 経路stepのtrackId一覧:', stepTrackIds);
+        // console.log('[DEBUG] 経路stepのtrackId一覧:', stepTrackIds);
         // 経路上のTrackを進路色・分岐器directionに
         const updatedTrackIds = new Set();
         (route.points || []).forEach((step, idx, arr) => {
@@ -913,26 +913,26 @@ class RouteManager {
                     }
                 }
                 // デバッグ: 全ペアstatus出力
-                console.log('[DEBUG][setPairStatus][allPairs]', {
-                    '0-1': track.getPairStatus(0,1),
-                    '1-0': track.getPairStatus(1,0),
-                    '2-3': track.getPairStatus(2,3),
-                    '3-2': track.getPairStatus(3,2),
-                    '0-3': track.getPairStatus(0,3),
-                    '3-0': track.getPairStatus(3,0),
-                    '2-1': track.getPairStatus(2,1),
-                    '0-2': track.getPairStatus(0,2),
-                    '2-0': track.getPairStatus(2,0),
-                    '1-3': track.getPairStatus(1,3),
-                    '3-1': track.getPairStatus(3,1)
-                });
+                // console.log('[DEBUG][setPairStatus][allPairs]', {
+                //     '0-1': track.getPairStatus(0,1),
+                //     '1-0': track.getPairStatus(1,0),
+                //     '2-3': track.getPairStatus(2,3),
+                //     '3-2': track.getPairStatus(3,2),
+                //     '0-3': track.getPairStatus(0,3),
+                //     '3-0': track.getPairStatus(3,0),
+                //     '2-1': track.getPairStatus(2,1),
+                //     '0-2': track.getPairStatus(0,2),
+                //     '2-0': track.getPairStatus(2,0),
+                //     '1-3': track.getPairStatus(1,3),
+                //     '3-1': track.getPairStatus(3,1)
+                // });
             } else {
                 // --- 追加: status変更直後に個別ログ ---
-                console.log(`[DEBUG][activateRoute] trackId=${track.id} type=${track.type} statusをROUTEに変更`, track);
+                // console.log(`[DEBUG][activateRoute] trackId=${track.id} type=${track.type} statusをROUTEに変更`, track);
             }
             // デバッグ: てこtrackIdと一致する場合は明示的に出力
             if (String(step.trackId) === String(leverTrackId)) {
-                console.log(`[DEBUG] てこtrackId(${leverTrackId})と一致: stepIdx=${idx}, track=`, track);
+                // console.log(`[DEBUG] てこtrackId(${leverTrackId})と一致: stepIdx=${idx}, track=`, track);
             }
             // 分岐器・ダブルクロス等のdirection自動判定
             if (track.isPoint) {
@@ -975,7 +975,7 @@ class RouteManager {
         if (window.app && window.app.trackManager) {
             const tracks = window.app.trackManager.tracks;
             let arr = Array.isArray(tracks) ? tracks : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
-            console.log('[DEBUG][activateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
+            // console.log('[DEBUG][activateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
         }
         // --- ここまで追加 ---
         if (typeof this.updateRouteList === 'function') this.updateRouteList();
@@ -1062,19 +1062,19 @@ class RouteManager {
                 }
                 // デバッグ: 全ペアstatus出力
                 if (track.getPairStatus) {
-                    console.log('[DEBUG][deactivateRoute][setPairStatus][allPairs]', {
-                        '0-1': track.getPairStatus(0,1),
-                        '1-0': track.getPairStatus(1,0),
-                        '2-3': track.getPairStatus(2,3),
-                        '3-2': track.getPairStatus(3,2),
-                        '0-3': track.getPairStatus(0,3),
-                        '3-0': track.getPairStatus(3,0),
-                        '2-1': track.getPairStatus(2,1),
-                        '0-2': track.getPairStatus(0,2),
-                        '2-0': track.getPairStatus(2,0),
-                        '1-3': track.getPairStatus(1,3),
-                        '3-1': track.getPairStatus(3,1)
-                    });
+                    // console.log('[DEBUG][deactivateRoute][setPairStatus][allPairs]', {
+                    //     '0-1': track.getPairStatus(0,1),
+                    //     '1-0': track.getPairStatus(1,0),
+                    //     '2-3': track.getPairStatus(2,3),
+                    //     '3-2': track.getPairStatus(3,2),
+                    //     '0-3': track.getPairStatus(0,3),
+                    //     '3-0': track.getPairStatus(3,0),
+                    //     '2-1': track.getPairStatus(2,1),
+                    //     '0-2': track.getPairStatus(0,2),
+                    //     '2-0': track.getPairStatus(2,0),
+                    //     '1-3': track.getPairStatus(1,3),
+                    //     '3-1': track.getPairStatus(3,1)
+                    // });
                 }
             }
             // 分岐器の場合、他のアクティブ進路のstepを再集計
@@ -1105,7 +1105,7 @@ class RouteManager {
         if (window.app && window.app.trackManager) {
             const tracks = window.app.trackManager.tracks;
             let arr = Array.isArray(tracks) ? tracks : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
-            console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
+            // console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
         }
         // --- ここまで追加 ---
         if (typeof this.updateRouteList === 'function') this.updateRouteList();
