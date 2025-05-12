@@ -814,6 +814,8 @@ class RouteManager {
             // 支障進路のみ解除
             for (const cr of conflictRoutes) {
                 this.deactivateRoute(cr.id);
+                if (window.app && window.app.canvas) window.app.canvas.draw();
+                if (typeof this.updateRouteList === 'function') this.updateRouteList();
             }
         }
         // デバッグ: てこtrackId, 経路stepのtrackId一覧
@@ -1021,36 +1023,6 @@ class RouteManager {
                         track.setPairStatus(2, 3, 'ROUTE');
                         track.setPairStatus(3, 2, 'ROUTE');
                     }
-                    // cross方向
-                    for (let i = 0; i < arr.length - 1; i++) {
-                        const curr = arr[i];
-                        const next = arr[i + 1];
-                        if (curr.trackId == track.id && next.trackId == track.id) {
-                            if (
-                                (curr.toEpIdx === 0 && next.toEpIdx === 3) || (curr.toEpIdx === 3 && next.toEpIdx === 0) ||
-                                (curr.toEpIdx === 1 && next.toEpIdx === 2) || (curr.toEpIdx === 2 && next.toEpIdx === 1)
-                            ) {
-                                track.setPairStatus(curr.toEpIdx, next.toEpIdx, 'ROUTE');
-                                track.setPairStatus(next.toEpIdx, curr.toEpIdx, 'ROUTE');
-                            }
-                        }
-                    }
-                }
-                // デバッグ: 全ペアstatus出力
-                if (track.getPairStatus) {
-                    // console.log('[DEBUG][deactivateRoute][setPairStatus][allPairs]', {
-                    //     '0-1': track.getPairStatus(0,1),
-                    //     '1-0': track.getPairStatus(1,0),
-                    //     '2-3': track.getPairStatus(2,3),
-                    //     '3-2': track.getPairStatus(3,2),
-                    //     '0-3': track.getPairStatus(0,3),
-                    //     '3-0': track.getPairStatus(3,0),
-                    //     '2-1': track.getPairStatus(2,1),
-                    //     '0-2': track.getPairStatus(0,2),
-                    //     '2-0': track.getPairStatus(2,0),
-                    //     '1-3': track.getPairStatus(1,3),
-                    //     '3-1': track.getPairStatus(3,1)
-                    // });
                 }
             }
             // 分岐器の場合、他のアクティブ進路のstepを再集計
@@ -1076,14 +1048,8 @@ class RouteManager {
             }
         });
         route.isActive = false;
+        // --- 追加: 解除後にレイアウト画面を即時再描画 ---
         if (window.app && window.app.canvas) window.app.canvas.draw();
-        // --- ここから追加: 全Trackのstatusを出力 ---
-        if (window.app && window.app.trackManager) {
-            const tracks = window.app.trackManager.tracks;
-            let arr = Array.isArray(tracks) ? tracks : Array.from(tracks.values ? tracks.values() : Object.values(tracks));
-            // console.log('[DEBUG][deactivateRoute] 全Trackのstatus:', arr.map(t => ({id: t.id, status: t.status, type: t.type})));
-        }
-        // --- ここまで追加 ---
         if (typeof this.updateRouteList === 'function') this.updateRouteList();
     }
 
