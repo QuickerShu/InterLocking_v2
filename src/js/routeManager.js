@@ -707,54 +707,12 @@ class RouteManager {
             const destName = route.destination?.name || route.destination?.id || '';
             const headerDiv = document.createElement('div');
             headerDiv.className = 'route-header';
-            // 進路名表示 or 編集input
-            if (this.editingRouteId === route.id) {
-                // 編集モード
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.value = route.name || `進路${idx+1}`;
-                nameInput.className = 'route-name-input';
-                nameInput.style.marginRight = '8px';
-                headerDiv.appendChild(nameInput);
-                // 反映ボタン
-                const applyBtn = document.createElement('button');
-                applyBtn.textContent = '反映';
-                applyBtn.className = 'route-edit-apply-btn';
-                applyBtn.onclick = () => {
-                    const newName = nameInput.value.trim();
-                    if (newName) {
-                        route.name = newName;
-                    }
-                    this.editingRouteId = null;
-                    this.updateRouteList();
-                };
-                headerDiv.appendChild(applyBtn);
-            } else {
-                // 通常表示
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'route-name';
-                nameSpan.textContent = route.name || `進路${idx+1}`;
-                nameSpan.style.marginRight = '8px';
-                headerDiv.appendChild(nameSpan);
-                // 変更ボタン
-                const editBtn = document.createElement('button');
-                editBtn.textContent = '変更';
-                editBtn.className = 'route-edit-btn';
-                editBtn.onclick = () => {
-                    this.editingRouteId = route.id;
-                    this.updateRouteList();
-                };
-                headerDiv.appendChild(editBtn);
-            }
-            const modeSpan = document.createElement('span');
-            modeSpan.className = `route-generation-mode ${route.isAuto ? 'auto' : 'manual'}`;
-            modeSpan.textContent = route.isAuto ? '自動' : '手動';
-            headerDiv.appendChild(modeSpan);
+            headerDiv.innerHTML = `<span class="route-name">${route.name || ''}</span> <span class="route-lever">[${leverName}→${destName}]</span>`;
             div.appendChild(headerDiv);
-            const detailsDiv = document.createElement('div');
-            detailsDiv.className = 'route-details';
-            detailsDiv.textContent = `てこ: ${leverName} → 着点: ${destName}`;
-            div.appendChild(detailsDiv);
+            // ボタン群
+            const btnGroup = document.createElement('div');
+            btnGroup.style.display = 'flex';
+            btnGroup.style.gap = '6px';
             // 開通/解除ボタン
             const actionBtn = document.createElement('button');
             actionBtn.className = 'route-action-btn';
@@ -775,7 +733,7 @@ class RouteManager {
                     }
                 };
             }
-            div.appendChild(actionBtn);
+            btnGroup.appendChild(actionBtn);
             // 削除ボタン
             const delBtn = document.createElement('button');
             delBtn.textContent = '削除';
@@ -784,7 +742,15 @@ class RouteManager {
                 this.routes.delete(route.id);
                 this.updateRouteList();
             };
-            div.appendChild(delBtn);
+            btnGroup.appendChild(delBtn);
+            // 詳細ボタン
+            const detailBtn = document.createElement('button');
+            detailBtn.textContent = '詳細';
+            detailBtn.onclick = () => {
+                window.routeManager.showRouteDetailModal(route);
+            };
+            btnGroup.appendChild(detailBtn);
+            div.appendChild(btnGroup);
             this.routeList.appendChild(div);
         });
     }
@@ -1141,6 +1107,47 @@ class RouteManager {
         this.routeCandidates = [];
         // 必要ならガイダンスや候補リストもリセット
         // 例: if (this.routeList) this.routeList.innerHTML = '';
+    }
+
+    // --- 進路詳細モーダル表示機能を追加 ---
+    showRouteDetailModal(route) {
+        // 既存モーダルがあれば削除
+        let modal = document.getElementById('routeDetailModal');
+        if (modal) modal.remove();
+        modal = document.createElement('div');
+        modal.id = 'routeDetailModal';
+        modal.className = 'modal show';
+        modal.style.zIndex = 2000;
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width:600px;">
+                <div class="modal-header"><h2>進路詳細: ${route.name || ''}</h2><button class="modal-close">×</button></div>
+                <div class="modal-body" style="max-height:60vh;overflow-y:auto;"></div>
+                <div class="modal-buttons"><button id="routeDetailCloseBtn">閉じる</button></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        // 閉じるボタン
+        modal.querySelector('.modal-close').onclick = () => modal.remove();
+        modal.querySelector('#routeDetailCloseBtn').onclick = () => modal.remove();
+        // 詳細内容を構築
+        const body = modal.querySelector('.modal-body');
+        let html = `<div><b>発点てこ:</b> ${route.lever?.name || route.lever?.id || ''}　<b>着点ボタン:</b> ${route.destination?.name || route.destination?.id || ''}</div>`;
+        html += `<table style="width:100%;margin-top:10px;border-collapse:collapse;">
+            <thead><tr><th>#</th><th>TrackID</th><th>名称</th><th>タイプ</th><th>方向</th><th>DCCアドレス</th></tr></thead><tbody>`;
+        (route.points || []).forEach((step, i) => {
+            let track = null;
+            if (window.app && window.app.trackManager) {
+                const tracks = window.app.trackManager.tracks;
+                if (typeof tracks.get === 'function') {
+                    track = tracks.get(step.trackId) || tracks.get(Number(step.trackId));
+                } else if (typeof tracks === 'object') {
+                    track = tracks[step.trackId] || tracks[Number(step.trackId)];
+                }
+            }
+            html += `<tr><td>${i+1}</td><td>${step.trackId}</td><td>${track?.name || ''}</td><td>${track?.type || ''}</td><td>${step.direction || ''}</td><td>${track?.dccAddress ?? ''}</td></tr>`;
+        });
+        html += `</tbody></table>`;
+        body.innerHTML = html;
     }
 }
 
