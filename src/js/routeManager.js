@@ -146,16 +146,13 @@ class RouteManager {
         // ツールバーボタンの参照を取得
         this.autoRouteBtn = document.getElementById('autoRouteBtn');
         this.manualRouteBtn = document.getElementById('manualRouteBtn');
-        this.saveRouteBtn = document.getElementById('saveRouteBtn');
-        this.loadRouteBtn = document.getElementById('loadRouteBtn');
         this.routeList = document.getElementById('route-list');
     }
 
     bindEvents() {
         this.autoRouteBtn.addEventListener('click', () => this.toggleAutoMode());
         this.manualRouteBtn.addEventListener('click', () => this.toggleManualMode());
-        this.saveRouteBtn.addEventListener('click', () => this.saveRoutes());
-        this.loadRouteBtn.addEventListener('click', () => this.loadRoutes());
+        // saveRouteBtn, loadRouteBtnは削除済みなのでaddEventListener不要
     }
 
     toggleAutoMode() {
