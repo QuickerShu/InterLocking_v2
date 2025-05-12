@@ -945,14 +945,17 @@ class RouteManager {
                         }
                     }
                     // 'branch'優先、なければ'straight'/'normal'
+                    let newDirection = 'normal';
                     if (directions.includes('reverse') || directions.includes('branch')) {
-                        track.pointDirection = 'reverse';
+                        newDirection = 'reverse';
                     } else if (directions.includes('normal') || directions.includes('straight')) {
-                        track.pointDirection = 'normal';
-                    } else {
-                        // どちらもなければデフォルト
-                        track.pointDirection = 'normal';
+                        newDirection = 'normal';
                     }
+                    // ここでTrackManager.switchPointを呼ぶ
+                    if (window.app && window.app.trackManager) {
+                        window.app.trackManager.switchPoint(track.id, newDirection);
+                    }
+                    track.pointDirection = newDirection; // 状態も同期
                 } else {
                     // ダブルクロス等
                     let directions = [];
@@ -961,10 +964,17 @@ class RouteManager {
                             directions.push(s.direction);
                         }
                     }
+                    let newDirection = 'straight';
                     if (directions.includes('cross')) {
-                        track.pointDirection = 'cross';
+                        newDirection = 'cross';
                     } else if (directions.includes('straight')) {
-                        track.pointDirection = 'straight';
+                        newDirection = 'straight';
+                    }
+                    // ダブルクロス・ダブルスリップも必要ならswitchPoint相当を呼ぶ
+                    if (typeof track.setCrossDirection === 'function') {
+                        track.setCrossDirection(newDirection);
+                    } else {
+                        track.pointDirection = newDirection;
                     }
                 }
             }

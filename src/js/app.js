@@ -3336,7 +3336,7 @@ class App {
                 ${track.isPoint ? `
                 <div class="property-item">
                     <label>DCCアドレス:</label>
-                    <input type="number" class="dcc-address" value="${track.dccAddress}" min="0" max="999">
+                    <input type="number" class="dcc-address" value="${(track.dccAddress != null && !isNaN(track.dccAddress)) ? track.dccAddress : ''}" min="0" max="999">
                     <label class="checkbox-label">
                         <input type="checkbox" class="invert-dcc" ${track.invertDcc ? 'checked' : ''}>
                         出力反転
@@ -4049,6 +4049,8 @@ App.prototype.renderPointsModalList = function() {
         const isInverted = track && track.invertDcc;
         const displayDirection = isInverted ? (track.pointDirection === 'normal' ? 'reverse' : 'normal') : track.pointDirection;
         const address = track ? track.dccAddress : '';
+        // 修正: null/undefinedガード
+        const safeAddress = (address != null && !isNaN(address)) ? address : '';
         const item = document.createElement('div');
         item.className = 'point-item';
         item.style.marginBottom = '8px';
@@ -4060,7 +4062,7 @@ App.prototype.renderPointsModalList = function() {
         item.appendChild(nameLabel);
 
         item.innerHTML += `
-            <div class="point-address">アドレス: <input type="number" class="address-input" value="${address}" min="0" max="2044" style="width:60px;"></div>
+            <div class="point-address">アドレス: <input type="number" class="address-input" value="${safeAddress}" min="0" max="2044" style="width:60px;"></div>
             <div class="point-direction">
                 <div class="direction-indicator ${displayDirection === 'normal' ? 'direction-normal' : 'direction-reverse'}"></div>
                 <span>${displayDirection === 'normal' ? '直進' : '分岐'}${isInverted ? ' (DCC反転)' : ''}</span>

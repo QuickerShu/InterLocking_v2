@@ -238,8 +238,10 @@ class Track {
             return false;
         }
         console.log(`[DEBUG:setPointDirection] called: trackId=${this.id}, type=${this.type}, direction=${direction}, before=${this.pointDirection}`);
+        // デバッグ: DSAir送信条件の値を出力
+        console.log('[DEBUG] dccAddress:', this.dccAddress, 'dsair.isConnected:', window.dsair && window.dsair.isConnected);
         // DCCアドレスがある場合は制御コマンドを送信
-        if (this.dccAddress && window.app && window.app.isDSAirConnected) {
+        if (this.dccAddress && window.dsair && window.dsair.isConnected) {
             try {
                 // invertDcc フラグがtrueの場合、DCC出力を反転
                 const dccDirection = this.invertDcc ? 
